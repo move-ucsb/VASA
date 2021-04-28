@@ -1,0 +1,11 @@
+__pycache__/*
+__pycache__
+.ipynb_checkpoints/*
+.ipynb_checkpoints
+.vscode/*
+.vscode
+data/*
+!data/counties.json
+test_figures/*
+prep2.py
+test2.ipynb
