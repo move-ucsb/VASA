@@ -1,8 +1,0 @@
-site_name: VASA
-nav:
-  - Home: index.md
-theme: 
-  name: readthedocs
-  favicon: favicon.ico
-markdown_extensions:
-  - attr_list

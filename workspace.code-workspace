@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"autoDocstring.startOnNewLine": true,
+		"autoDocstring.includeName": true
+	}
+}
