@@ -4,9 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>&lt;no title&gt; &#8212; VASA v0.0.1 Manual</title>
+    <title>VASA: A Python Library &#8212; VASA v0.0.1 Manual</title>
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/pysal-styles.css" />
     <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
@@ -61,7 +62,12 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api.html#markov-methods">Markov Methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#baseplot">BasePlot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#stripplot">stripplot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#preprocessing-prep-vasa">preprocessing.prep_vasa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#vasa-preprocessing-prep">VASA.preprocessing.prep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#vasa-static-choropleth-static-choropleth-vasa">VASA.static_choropleth.static_choropleth_vasa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#vasa-static-choropleth-static-choropleth">VASA.static_choropleth.static_choropleth</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="references.html">References</a></li>
@@ -77,7 +83,10 @@
      href="#">Page <b class="caret"></b></a>
   <ul class="dropdown-menu localtoc"
       role="menu"
-      aria-labelledby="dLabelLocalToc"></ul>
+      aria-labelledby="dLabelLocalToc"><ul>
+<li><a class="reference internal" href="#">VASA: A Python Library</a></li>
+</ul>
+</ul>
 </li>
               
             
@@ -105,41 +114,11 @@
   <div class="row">
     <div class="body col-md-12 content" role="main">
       
-  <p>Introduction of your package</p>
-<div class="container-fluid">
-  <div class="row equal-height">
-    <div class="col-sm-1 col-xs-hidden">
-    </div>
-    <div class="col-md-3 col-xs-12">
-        <a href="http://nbviewer.jupyter.org/github/pysal/giddy/blob/master/notebooks/directional.ipynb" class="thumbnail">
-            <img src="_static/images/rose_conditional.png" class="img-responsive center-block">
-            <div class="caption text-center">
-            <h6>Rose diagram (directional LISAs)</h6>
-            </div>
-        </a>
-    </div>
-    <div class="col-sm-3 col-xs-12">
-        <a href="http://nbviewer.jupyter.org/github/pysal/giddy/blob/master/notebooks/Markov%20Based%20Methods.ipynb" class="thumbnail">
-            <img src="_static/images/spatial_markov_us.png" class="img-responsive center-block">
-            <div class="caption text-center">
-            <h6>Spatial Markov Chain</h6>
-            </div>
-        </a>
-    </div>
-    <div class="col-sm-3 col-xs-12">
-        <a href="http://nbviewer.jupyter.org/github/pysal/giddy/blob/master/notebooks/Rank%20based%20Methods.ipynb" class="thumbnail">
-            <img src="_static/images/neighboorsetLIMA_US.png"
-            class="img-responsive center-block">
-            <div class="caption text-center">
-            <h6>Neighbor Set Local Indicator of Mobility Association (LIMA)
-            </h6>
-            </div>
-        </a>
-    </div>
-    <div class="col-sm-2 col-xs-hidden">
-    </div>
-  </div>
-</div><div class="toctree-wrapper compound">
+  <div class="section" id="vasa-a-python-library">
+<h1>VASA: A Python Library<a class="headerlink" href="#vasa-a-python-library" title="Permalink to this headline">¶</a></h1>
+<p>It is absolutely great.</p>
+<div class="toctree-wrapper compound">
+</div>
 </div>
 
 
@@ -161,7 +140,7 @@
       
     </p>
     <p>
-        &copy; Copyright 2018, pysal developers.<br/>
+        &copy; Copyright 2021, PySAL Developers.<br/>
       Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br/>
     </p>
   </div>

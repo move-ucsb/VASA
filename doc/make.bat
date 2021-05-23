@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
-set SPHINXPROJ=VASA
+set SPHINXPROJ=PACKAGE_NAME
 
 if "%1" == "" goto help
 
