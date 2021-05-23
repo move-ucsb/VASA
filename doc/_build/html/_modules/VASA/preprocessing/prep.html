@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VASA.preprocessing.prep &#8212; VASA v0.0.1 Manual</title>
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/pysal-styles.css" />
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../../../_static/pysal_favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script type="text/javascript" src="../../../_static/js/jquery-1.11.0.min.js "></script>
+<script type="text/javascript" src="../../../_static/js/jquery-fix.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-3.3.7/js/bootstrap.min.js "></script>
+<script type="text/javascript" src="../../../_static/bootstrap-sphinx.js "></script>
+
+  </head><body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          VASA</a>
+        <span class="navbar-text navbar-version pull-left"><b>0.0.1</b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+                <li><a href="../../../installation.html">Installation</a></li>
+                <li><a href="../../../api.html">API</a></li>
+                <li><a href="../../../references.html">References</a></li>
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#baseplot">BasePlot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#stripplot">stripplot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#preprocessing-prep-vasa">preprocessing.prep_vasa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#vasa-preprocessing-prep">VASA.preprocessing.prep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#vasa-static-choropleth-static-choropleth-vasa">VASA.static_choropleth.static_choropleth_vasa</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api.html#vasa-static-choropleth-static-choropleth">VASA.static_choropleth.static_choropleth</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../references.html">References</a></li>
+</ul>
+</ul>
+</li>
+              
+                <li class="dropdown">
+  <a role="button"
+     id="dLabelLocalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="#">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"
+      role="menu"
+      aria-labelledby="dLabelLocalToc"></ul>
+</li>
+              
+            
+            
+            
+            
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="body col-md-12 content" role="main">
+      
+  <h1>Source code for VASA.preprocessing.prep</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">libpysal</span> <span class="k">as</span> <span class="nn">lps</span>
+<span class="kn">from</span> <span class="nn">esda</span> <span class="kn">import</span> <span class="n">Moran_Local</span><span class="p">,</span> <span class="n">Moran</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">colors</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span> <span class="k">as</span> <span class="n">dt</span>
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># Look at this function:</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<div class="viewcode-block" id="group_data"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.group_data">[docs]</a><span class="k">def</span> <span class="nf">group_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">date_col</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="s1">&#39;fips&#39;</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="s1">&#39;week&#39;</span><span class="p">,</span> <span class="n">date_format</span><span class="o">=</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Groups data by date to iterate over later. </span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : dataframe</span>
+<span class="sd">        Must include a date and grouping column along with variables of interest</span>
+<span class="sd">    cols : str | List[str]</span>
+<span class="sd">        Column names for the variables of interest</span>
+<span class="sd">    date_col : str</span>
+<span class="sd">        Column name containing dates</span>
+<span class="sd">    group_col : str</span>
+<span class="sd">        Column name of grouping, i.e. fips code</span>
+<span class="sd">    by: &#39;week&#39; | &#39;day&#39;, optional</span>
+<span class="sd">        How to group data, default: week.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dataframe</span>
+<span class="sd">        Dataframe grouped by date</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">cols</span><span class="p">]</span>
+
+    <span class="c1"># Convert string dates into date objects</span>
+    <span class="n">dates</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">date_format</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="n">date_col</span><span class="p">]]</span>
+
+    <span class="k">if</span> <span class="n">by</span> <span class="o">==</span> <span class="s1">&#39;week&#39;</span><span class="p">:</span>
+        <span class="c1"># See the function defined below, this becomes an array of (year, week) tuples</span>
+        <span class="n">year_week</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_year_week</span><span class="p">(</span><span class="n">date</span><span class="p">)</span> <span class="k">for</span> <span class="n">date</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">]</span>
+
+        <span class="c1"># We need to make a dictionary to give a function to each column to aggregate by</span>
+        <span class="c1"># aggregate the cols by mean, also get start (min) and end (max) dates for each group</span>
+        <span class="c1"># in the future we&#39;ll pass in the function in case someone wants to use a different function than mean</span>
+        <span class="c1"># You can use .extend(), but here I use what&#39;s called &quot;iterable unpacking&quot; or &quot;splat&quot; to combine the arrays</span>
+        <span class="c1"># this is what it does: [*[1, 2, 3], 4] is converted to [1, 2, 3, 4]</span>
+        <span class="n">agg_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">([</span><span class="o">*</span><span class="n">cols</span><span class="p">,</span> <span class="s2">&quot;date_start&quot;</span><span class="p">,</span> <span class="s2">&quot;date_end&quot;</span><span class="p">],</span>
+                            <span class="p">[</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)),</span> <span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">]))</span>
+        <span class="c1"># The result of this is something like: { &quot;sg_sheltered&quot;: np.nanmean, .... }</span>
+        <span class="c1"># Which means that we will aggreaget &quot;sg_sheltered&quot; column by the mean</span>
+        <span class="c1"># don&#39;t worry if this is confusing, it&#39;s not very important</span>
+
+
+        <span class="c1"># This is the most important part to understand:</span>
+        <span class="c1"># 1. We duplicate the date column to date_start and date_end and assign the (year, week) tuples to another column</span>
+        <span class="c1"># 2. Group by the week and county </span>
+        <span class="c1"># 3. Aggregate: compute weekly averages for each county and find the min and max dates in that week</span>
+        <span class="c1"># 4. Finally group all counties by the week</span>
+        <span class="n">grouped</span> <span class="o">=</span> <span class="n">data</span> \
+            <span class="o">.</span><span class="n">assign</span><span class="p">(</span>
+                <span class="n">week_year</span><span class="o">=</span><span class="n">year_week</span><span class="p">,</span>
+                <span class="n">date_start</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span>
+                <span class="n">date_end</span><span class="o">=</span><span class="n">dates</span>
+            <span class="p">)</span> \
+            <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;week_year&quot;</span><span class="p">,</span> <span class="n">group_col</span><span class="p">])</span> \
+            <span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">agg_dict</span><span class="p">)</span> \
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span> \
+            <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;week_year&quot;</span><span class="p">])</span>
+
+    <span class="k">elif</span> <span class="n">by</span> <span class="o">==</span> <span class="s1">&#39;day&#39;</span><span class="p">:</span>
+        <span class="n">grouped</span> <span class="o">=</span> <span class="n">data</span> \
+            <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">date_col</span><span class="p">])</span>
+        <span class="c1"># In case there are multiple values for each day:</span>
+        <span class="c1"># grouped = data \</span>
+        <span class="c1">#    .assign(**{date_col: dates}) \</span>
+        <span class="c1">#    .groupby([date_col, group_col])[cols].mean() \</span>
+        <span class="c1">#    .groupby([date_col])</span>
+
+    <span class="k">return</span> <span class="n">grouped</span></div>
+
+<div class="viewcode-block" id="get_year_week"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.get_year_week">[docs]</a><span class="k">def</span> <span class="nf">get_year_week</span><span class="p">(</span><span class="n">date</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gets the week number of date (starting on monday).</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    date : date</span>
+<span class="sd">        Date to convert</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        A tuple of (year, week_number)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">week_num</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">isocalendar</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">year</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">year</span>
+
+    <span class="c1"># The week number can wrap to the next year, need to ensure year does as well.</span>
+    <span class="c1"># Don&#39;t need to worry about wrapping other way</span>
+    <span class="k">if</span> <span class="n">week_num</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">date</span><span class="o">.</span><span class="n">month</span> <span class="o">==</span> <span class="mi">12</span><span class="p">:</span>
+        <span class="n">year</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">week_num</span> <span class="o">==</span> <span class="mi">53</span> <span class="ow">and</span> <span class="n">date</span><span class="o">.</span><span class="n">month</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">year</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="c1"># Year comes first so dataframe is sorted chronologically</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">year</span><span class="p">,</span> <span class="n">week_num</span><span class="p">)</span></div>
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+<span class="c1">#</span>
+<span class="c1"># Local moran has issues with missing values and counties that don&#39;t have borders,</span>
+<span class="c1"># We&#39;ll have to figure out a better way to deal with this, but for now I&#39;m just</span>
+<span class="c1"># getting rid of the places that cause me issues:</span>
+<span class="c1">#</span>
+
+<span class="k">def</span> <span class="nf">_filters</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">coverage</span><span class="o">=</span><span class="s2">&quot;usa&quot;</span><span class="p">,</span> <span class="n">excl_non48</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">11001</span><span class="p">:</span> <span class="c1"># DC</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">excl_non48</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">2000</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">2999</span><span class="p">:</span> <span class="c1"># exclude AK</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">excl_non48</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">15001</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">15009</span><span class="p">:</span> <span class="c1"># exclude HI</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">60010</span><span class="p">:</span> <span class="c1"># territories and such</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">53055</span> <span class="ow">or</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">25019</span><span class="p">:</span> <span class="c1"># ISLANDS WITH NO NEIGHBORS</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">51515</span><span class="p">:</span> <span class="c1"># Bedford County VA, code was changed in 2013</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">output</span>
+
+<div class="viewcode-block" id="filter_data"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.filter_data">[docs]</a><span class="k">def</span> <span class="nf">filter_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">fips_col</span><span class="p">,</span> <span class="n">coverage</span><span class="o">=</span><span class="s2">&quot;usa&quot;</span><span class="p">,</span> <span class="n">excl_non48</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">filters</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">_filters</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">fips_col</span><span class="p">],</span> <span class="n">coverage</span><span class="p">,</span> <span class="n">excl_non48</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">filters</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="filter_map"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.filter_map">[docs]</a><span class="k">def</span> <span class="nf">filter_map</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">coverage</span><span class="o">=</span><span class="s2">&quot;usa&quot;</span><span class="p">,</span> <span class="n">excl_non48</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="c1"># remove ? - I was doing something different for maps...</span>
+
+    <span class="n">filters</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">_filters</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;fips&quot;</span><span class="p">],</span> <span class="n">coverage</span><span class="p">,</span> <span class="n">excl_non48</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">filters</span><span class="p">]</span></div>
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+<span class="c1">#</span>
+<span class="c1"># After doing the local moran test we have to filter out less significant values</span>
+<span class="c1"># using false_discovery_rate or bonferroni. We also filter out to leave us with only</span>
+<span class="c1"># hot-hot spots and cold-cold spots. In the future we&#39;ll want to include hot-cold and </span>
+<span class="c1"># cold-hot spots as well.</span>
+<span class="c1">#</span>
+
+<span class="c1"># esda fdr is not strictly doing fdr</span>
+<div class="viewcode-block" id="false_discovery_rate"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.false_discovery_rate">[docs]</a><span class="k">def</span> <span class="nf">false_discovery_rate</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;p&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;p&quot;</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">sig</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;sig&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;p&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;i&quot;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()[</span><span class="s2">&quot;sig&quot;</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="bonferroni"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.bonferroni">[docs]</a><span class="k">def</span> <span class="nf">bonferroni</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">sig</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">sig</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="filter_quadrants"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.filter_quadrants">[docs]</a><span class="k">def</span> <span class="nf">filter_quadrants</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[(</span><span class="n">a</span> <span class="k">if</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="k">else</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arr</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="combine"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.combine">[docs]</a><span class="k">def</span> <span class="nf">combine</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">fdr</span><span class="p">,</span> <span class="n">bon</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">b</span> <span class="o">+</span> <span class="mi">4</span> <span class="k">if</span> <span class="n">b</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">(</span><span class="n">f</span> <span class="o">+</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">f</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">s</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">b</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bon</span><span class="p">,</span> <span class="n">fdr</span><span class="p">,</span> <span class="n">sim</span><span class="p">)</span>
+    <span class="p">]</span></div>
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+<span class="c1">#</span>
+<span class="c1"># This function runs the local moran test for us and returns an array of </span>
+<span class="c1"># the quadrant classification for each county</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+<div class="viewcode-block" id="moran_quadrants"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.moran_quadrants">[docs]</a><span class="k">def</span> <span class="nf">moran_quadrants</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">which</span><span class="p">):</span>
+    <span class="n">local_moran</span> <span class="o">=</span> <span class="n">Moran_Local</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">geoda_quads</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">permutations</span><span class="o">=</span><span class="n">n_permutations</span><span class="p">(</span><span class="n">col</span><span class="p">))</span>
+
+    <span class="n">ps</span> <span class="o">=</span> <span class="n">local_moran</span><span class="o">.</span><span class="n">p_sim</span>
+    <span class="n">qs</span> <span class="o">=</span> <span class="n">filter_quadrants</span><span class="p">(</span><span class="n">local_moran</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">which</span> <span class="o">==</span> <span class="s2">&quot;fdr&quot;</span><span class="p">:</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">false_discovery_rate</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">which</span> <span class="o">==</span> <span class="s2">&quot;sim&quot;</span><span class="p">:</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">ps</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">which</span> <span class="o">==</span> <span class="s2">&quot;bon&quot;</span><span class="p">:</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">bonferroni</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">which</span> <span class="o">==</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span>
+        <span class="n">fdr</span> <span class="o">=</span> <span class="n">false_discovery_rate</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="n">bon</span> <span class="o">=</span> <span class="n">bonferroni</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="n">sim</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">ps</span><span class="p">]</span>
+
+        <span class="n">qs</span> <span class="o">=</span> <span class="n">combine</span><span class="p">(</span>
+            <span class="n">qs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sim</span><span class="p">),</span>
+            <span class="n">qs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">fdr</span><span class="p">),</span>
+            <span class="n">qs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">bon</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">sim</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="s1">&#39;Valid p-value evaluations: &quot;bon&quot;, &quot;fdr&quot;, or &quot;sim&quot;&#39;</span>
+        
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">qs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="n_permutations"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.n_permutations">[docs]</a><span class="k">def</span> <span class="nf">n_permutations</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">999</span> <span class="c1"># default value</span></div>
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># This is the function we call from the notebook, it iterates over each group from the output</span>
+<span class="c1"># of our grouping function and runs the local test for each variable.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+<div class="viewcode-block" id="local_moran"><a class="viewcode-back" href="../../../generated/VASA.preprocessing.prep.html#VASA.preprocessing.prep.local_moran">[docs]</a><span class="k">def</span> <span class="nf">local_moran</span><span class="p">(</span><span class="n">grouped</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">date_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">group_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">map_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">map_group_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sig</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s2">&quot;fdr&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">cols</span><span class="p">]</span>
+
+    <span class="n">output</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="o">*</span><span class="n">cols</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">W</span> <span class="o">=</span> <span class="n">lps</span><span class="o">.</span><span class="n">weights</span><span class="o">.</span><span class="n">Queen</span><span class="p">(</span><span class="n">map_data</span><span class="p">[</span><span class="s2">&quot;geometry&quot;</span><span class="p">])</span>
+    <span class="n">W</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="s1">&#39;r&#39;</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">grouped</span><span class="p">),</span> <span class="n">total</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">limit</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">grouped</span><span class="p">))</span> <span class="k">if</span> <span class="n">limit</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">grouped</span><span class="p">)):</span>
+
+        <span class="k">if</span> <span class="n">limit</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">==</span> <span class="n">limit</span><span class="p">:</span>
+            <span class="k">break</span> 
+
+        <span class="k">if</span> <span class="n">group</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># it&#39;s important we merge on map so grouping order is consistent</span>
+        <span class="n">ordered</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">map_data</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">left_on</span><span class="o">=</span><span class="n">map_group_col</span><span class="p">,</span> <span class="n">right_on</span><span class="o">=</span><span class="n">group_col</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span>
+        <span class="p">)</span>
+
+        <span class="n">row</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;date&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s1">&#39;date_start&#39;</span><span class="p">]),</span> <span class="nb">max</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s1">&#39;date_end&#39;</span><span class="p">])]</span> <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;date_start&#39;</span> <span class="ow">in</span> <span class="n">ordered</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="k">else</span> <span class="nb">min</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">date_col</span><span class="p">])</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cols</span><span class="p">):</span>
+            <span class="n">mq</span> <span class="o">=</span> <span class="n">moran_quadrants</span><span class="p">(</span><span class="n">ordered</span><span class="p">[</span><span class="n">col</span><span class="p">],</span> <span class="n">W</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="n">which</span><span class="p">)</span>
+            <span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">mq</span>
+            
+        <span class="n">output</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">map_data</span><span class="p">[</span><span class="n">map_group_col</span><span class="p">])</span></div>
+</pre></div>
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+        <br/>
+        
+      
+    </p>
+    <p>
+        &copy; Copyright 2021, PySAL Developers.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>
