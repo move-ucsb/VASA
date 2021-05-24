@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from VASA.preprocessing.vasa import VASA
+from VASA.vasa import VASA
 from VASA.BasePlot import BasePlot
 
 
