@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Literal, Tuple
+from typing import Literal, Tuple, Callable, List
 
 import numpy as np
 import pandas as pd
@@ -12,13 +12,32 @@ from functools import partial
 from multiprocessing import cpu_count, Pool
 from datetime import datetime as dt
 
+# Commented out for testing...
+# from .reduce_vasa_df import *
+
 
 class VASA:
-    """The VASA class. This is what it does.
+    """
+    A standard data object for VASA plots
+
+
+    Parameters
+    ----------
+
+
+    Attributes
+    ----------
+
+
+    Examples
+    --------
+    >>> import libpysal
+
+
     """
     def __init__(
         self,
-        df: str | pd.DataFrame,
+        df: str or pd.DataFrame,
         gdf: gpd.GeoDataFrame,
         df_group_col: str = "fips",
         gdf_group_col: str = "fips",
@@ -26,6 +45,9 @@ class VASA:
         date_format: str = "%Y-%m-%d",
         temp_res: Literal["day", "week", "month", "year"] = "week"
     ) -> None:
+        """
+            DOCSTRING
+        """
         if isinstance(df, str):
             df = pd.read_csv(df)
         elif not isinstance(df, pd.DataFrame):
@@ -39,8 +61,8 @@ class VASA:
         self.date_format = date_format
         self.temp_res = temp_res
 
-        self.cols: list[str] = list(
-            {*df.columns} - {self.df_group_col, self.date_col}
+        self.cols: List[str] = list(
+            set(df.columns) - {self.df_group_col, self.date_col}
         )
 
         # Convert date column to dates
@@ -107,7 +129,7 @@ class VASA:
         # return (output, ordered[self.gdf_group_col])
 
     # specify column...
-    def get_county(self, fips: int, date="all") -> list[int]:
+    def get_county(self, fips: int, date="all") -> List[int]:
         i = list(self.fips_order).index(fips)
         return [row[self.cols[0]][i] for _, row in self.df.iterrows()]
 
@@ -125,13 +147,46 @@ class VASA:
         W.transform = 'r'
 
         with Pool(num_processes) as pool:
-            self.df[self.cols[0]] = list(
-                pool.map(
-                    partial(func, col=self.cols[0],
-                            W=W, sig=0.05, which="fdr"),
-                    [row for _, row in self.df.iterrows()]
+            for col in self.cols:
+
+                self.df[col] = list(
+                    pool.map(
+                        partial(func, col=col,
+                                W=W, sig=0.05, which="fdr"),
+                        [row for _, row in self.df.iterrows()]
+                    )
                 )
-            )
+
+    def reduce(
+        self,
+        # this could return anything really...
+        reduce: (
+            Literal["count", "recency", "count_hh", "count_ll", "mode"] |
+            Callable[[List[List[int]]], List[int]]
+        )
+    ) -> pd.DataFrame:
+        copy: pd.DataFrame = self.df[self.cols].copy()
+
+        if reduce == "count":
+            reduce = reduce_by_count
+        elif reduce == "count_hh":
+            reduce = reduce_by_count_hh
+        elif reduce == "count_ll":
+            reduce = reduce_by_count_ll
+        elif reduce == "recency":
+            reduce = reduce_by_recency
+        elif reduce == "mode_sig":
+            reduce = reduce_by_mode_sig
+        elif reduce == "mode":
+            reduce = reduce_by_mode
+
+        return copy \
+            .agg(reduce) \
+            .assign(fips=self.fips_order)
+
+    # I want to change the name of this
+    def agg(self, ag):
+        return 1
 
 
 def func(ordered, col, W, sig, which):
@@ -153,6 +208,7 @@ def bonferroni(arr, sig):
 
 # We don't want to filter
 def filter_quadrants(arr):
+  #  return arr
     return [(a if a < 3 else a) for a in arr]
 
 
@@ -176,6 +232,9 @@ def combine(sim, fdr, bon):
 #
 
 
+#
+# STILL GET THE ISSUE WHERE VERYTHING IS A 2 
+#
 def moran_quadrants(col, W, alpha, which):
     local_moran = Moran_Local(col, W, geoda_quads=True,
                               permutations=n_permutations(col))
@@ -230,3 +289,40 @@ def get_year_week(date: dt) -> Tuple[int, int]:
 
     # Year comes first so dataframe is sorted chronologically
     return (year, week_num)
+
+#
+#
+#
+
+def _filters(n, coverage="usa", excl_non48=True):
+    output = True
+
+    if n == 11001: # DC
+        output = False
+    if excl_non48 and n >= 2000 and n <= 2999: # exclude AK
+        output = False
+    if excl_non48 and n >= 15001 and n <= 15009: # exclude HI
+        output = False
+    if n >= 60010: # territories and such
+        output = False
+    if n == 53055 or n == 25019: # ISLANDS WITH NO NEIGHBORS
+        output = False
+    if n == 51515: # Bedford County VA, code was changed in 2013
+        output = False
+
+    return output
+
+def filter_data(data, fips_col, coverage="usa", excl_non48=True):
+    filters = [
+        _filters(x[fips_col], coverage, excl_non48) for _, x in data.iterrows()
+    ]
+    return data.loc[filters]
+
+def filter_map(data, coverage="usa", excl_non48=True):
+    # remove ? - I was doing something different for maps...
+
+    filters = [
+        _filters(x["fips"], coverage, excl_non48) for _, x in data.iterrows()
+    ]
+    return data.loc[filters]
+

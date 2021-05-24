@@ -2,30 +2,31 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
+import math
 from typing import List
 
-from VASA.preprocessing.vasa import VASA
-from VASA.BasePlot import BasePlot
+#from VASA.preprocessing.vasa import VASA
+#from VASA.BasePlot import BasePlot
 
 
 class Scatter(BasePlot):
 
     def __init__(self, v: VASA, cols=None):
         fig, axes = plt.subplots(
-            1,
-            1,
+            math.ceil(len(v.cols) / 2),
+            min(len(v.cols), 2),
             figsize=(8, 8)
         )
-        super().__init__(fig, "scatter_test")
+        super().__init__("scatter", "scatter_test")
 
         self.v: VASA = v
         self.fig = fig
-        self.axes = [axes] # axes.flatten()
+        self.axes = [axes] if len(v.cols) == 1 else axes.flatten()
         self.plotted = False
 
     # plot args for like colors??
     # showLines: bool or List[int] # fips
-    def plot(self, titles: str or List[str]):
+    def plot(self, titles: str or List[str] = ""):
         count = self.v.reduce("count")
         recent = self.v.reduce('recency')
 
@@ -35,30 +36,49 @@ class Scatter(BasePlot):
             right_on="fips",
             how="inner",
             suffixes=("_count", "_recency")
-        )
-        df["count"] = [
-            max(c)
-            for c in df["sheltered_in_place_7days_rolling_avg_count"]
-        ]
-        df["which"] = [
-            (1 if h > c else 0)
-            for h, c in df["sheltered_in_place_7days_rolling_avg_count"]
-        ]
+        ).reset_index()
 
-        df = df.rename(
-            { "sheltered_in_place_7days_rolling_avg_recency": "recent" },
-            axis="columns"
-        )
+        # df["count"] = [
+        #     max(c)
+        #     for c in df["sheltered_in_place_7days_rolling_avg_count"]
+        # ]
+        # df["which"] = [
+        #     (1 if h > c else 0)
+        #     for h, c in df["sheltered_in_place_7days_rolling_avg_count"]
+        # ]
 
-        print(df)
+        # df = df.rename(
+        #     { "sheltered_in_place_7days_rolling_avg_recency": "recent" },
+        #     axis="columns"
+        # )
 
-        points = df.groupby(["count", "recent"]).agg(np.mean)
+        # print(df)
 
-        print(points)
-        
+        # points = df.groupby(["count", "recent"]).agg(np.mean)
+
+        print(self.axes)
+
         for i, ax in enumerate(self.axes):
+            col: str = self.v.cols[i]
 
-            # fig.tight_layout()
+            # print(col, df.columns)
+
+            points = df[[f"{col}_count", f"{col}_recency"]]
+            points["count"] = [
+                max(c)
+                for c in points[f"{col}_count"]
+            ]
+            points["which"] = [
+                (1 if h > c else 0)
+                for h, c in points[f"{col}_count"]
+            ]
+            points = points.rename(
+                {f"{col}_recency": "recent"},
+                axis="columns"
+            )
+            points = points.groupby(["count", "recent"]).agg(np.mean)
+
+            print(points.head())
 
             self.__create_scatter(ax, points)
 
