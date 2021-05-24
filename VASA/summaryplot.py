@@ -16,7 +16,7 @@ class Summary(BasePlot):
 
         self.fig = fig
         self.axes = [axes]
-        self.v = v
+        self.v: VASA = v
 
     def plot(self):
         return 1
