@@ -18,7 +18,7 @@ class Scatter(BasePlot):
         )
         super().__init__(fig, "scatter_test")
 
-        self.v = v
+        self.v: VASA = v
         self.fig = fig
         self.axes = [axes] # axes.flatten()
         self.plotted = False
