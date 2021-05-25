@@ -5,8 +5,8 @@ import numpy as np
 import math
 from typing import List
 
-#from VASA.preprocessing.vasa import VASA
-#from VASA.BasePlot import BasePlot
+from VASA.vasa import VASA
+from VASA.BasePlot import BasePlot
 
 
 class Scatter(BasePlot):
