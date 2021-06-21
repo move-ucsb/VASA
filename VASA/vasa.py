@@ -146,6 +146,12 @@ class VASA:
         W = lps.weights.Queen(self.gdf["geometry"])
         W.transform = 'r'
 
+        def get_order(row):
+            data = pd.DataFrame({"d": row, "fips": self.fips_order})
+            l = pd.merge(self.gdf, data, how="left", left_on=self.gdf_group_col, right_on="fips")
+            print(l["d"])
+            return l["d"].to_numpy()
+
         with Pool(num_processes) as pool:
             for col in self.cols:
 
@@ -153,7 +159,7 @@ class VASA:
                     pool.map(
                         partial(func, col=col,
                                 W=W, sig=0.05, which="fdr"),
-                        [row for _, row in self.df.iterrows()]
+                        [get_order(row) for _, row in self.df.iterrows()]
                     )
                 )
 
