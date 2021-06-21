@@ -53,12 +53,15 @@ def reduce_by_count_hh(arr: County_History_List) -> County_list:
 def reduce_by_count_ll(arr: County_History_List) -> County_list:
     return reduce_by_count_equals(arr, 2)
 
-
+#
+# No tests since called from reduce_by_count_**
+#
 def reduce_by_count_equals(arr: County_History_List, val: int) -> County_list:
-    return reduce(
+    return list(reduce(
         lambda acc, curr: np.array(acc) + (np.array(curr) == val),
-        arr
-    )
+        arr,
+        np.zeros(len(arr[0]))
+    ))
 
 
 # ughhh this needs to be made better
@@ -81,14 +84,17 @@ def reduce_by_recency_hh(arr: County_History_List) -> County_list:
 def reduce_by_recency_ll(arr: County_History_List) -> County_list:
     return reduce_by_recency_equals(arr, 2)
 
-
+#
+# THIS MUST ADD 1 so that we can tell the difference between week 0 and no week at all
+# This doesn't need tests because called from reduce_by_recency_**
+#
 def reduce_by_recency_equals(
     arr: County_History_List,
     val: int
 ) -> County_list:
     return [
         max([
-            (idx if week[county_idx] == val else 0)
+            (idx + 1 if week[county_idx] == val else 0)
             for idx, week in enumerate(arr)
         ])
         for county_idx in range(len(arr[0]))

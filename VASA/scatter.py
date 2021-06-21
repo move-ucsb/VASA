@@ -12,21 +12,24 @@ from VASA.BasePlot import BasePlot
 class Scatter(BasePlot):
 
     def __init__(self, v: VASA, cols=None):
-        fig, axes = plt.subplots(
-            math.ceil(len(v.cols) / 2),
-            min(len(v.cols), 2),
-            figsize=(8, 8)
-        )
         super().__init__("scatter", "scatter_test")
 
         self.v: VASA = v
-        self.fig = fig
-        self.axes = [axes] if len(v.cols) == 1 else axes.flatten()
         self.plotted = False
 
     # plot args for like colors??
     # showLines: bool or List[int] # fips
     def plot(self, titles: str or List[str] = ""):
+        fig, axes = plt.subplots(
+            math.ceil(len(v.cols) / 2),
+            min(len(v.cols), 2),
+            figsize=(8, 8),
+            sharex=True,
+            sharey=True
+        )
+        self.fig = fig
+        self.axes = [axes] if len(self.v.cols) == 1 else axes.flatten()
+
         count = self.v.reduce("count")
         recent = self.v.reduce('recency')
 
@@ -56,14 +59,14 @@ class Scatter(BasePlot):
 
         # points = df.groupby(["count", "recent"]).agg(np.mean)
 
-        print(self.axes)
+        # print(self.axes)
 
         for i, ax in enumerate(self.axes):
             col: str = self.v.cols[i]
 
             # print(col, df.columns)
 
-            points = df[[f"{col}_count", f"{col}_recency"]]
+            points = df[[f"{col}_count", f"{col}_recency"]].copy()
             points["count"] = [
                 max(c)
                 for c in points[f"{col}_count"]
@@ -76,14 +79,18 @@ class Scatter(BasePlot):
                 {f"{col}_recency": "recent"},
                 axis="columns"
             )
-            points = points.groupby(["count", "recent"]).agg(np.mean)
+            print(points[points["count"] == 50])
+            #print(points[["recent", "count", "which"]])
 
-            print(points.head())
+            points = points[["recent", "count", "which"]].groupby(["count", "recent"]).agg(np.mean)
+
+            print("POINTS HEAD")
+            #print(points.head())
 
             self.__create_scatter(ax, points)
 
         self.plotted = True
-        return self.fig
+        #return self.fig
 
     def __create_scatter(self, ax, df: pd.DataFrame):
         sns.scatterplot(
@@ -92,8 +99,12 @@ class Scatter(BasePlot):
             data=df,
             hue="which",
             palette="bwr",
-            ax=ax
+            ax=ax,
+            s=12
         )
+        # _, maxy = ax.get_ylim()
+        # ax.set_xlim(0, maxy)
+        # ax.set_ylim(0.5, maxy)
 
     def save_plot(self, *args, **kwargs):
         if not self.plotted:
