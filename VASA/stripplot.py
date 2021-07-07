@@ -14,10 +14,19 @@
 
 # state_names.loc[state_names.num_code=='25']
 
+
+
 import matplotlib.pyplot as plt
 
 from VASA.vasa import VASA
 from VASA.BasePlot import BasePlot
+
+import pandas as pd
+import seaborn as sns
+
+state_names = pd.read_csv("../data/state_names.csv")
+state_names.num_code = state_names.num_code.apply(lambda x: '0' + str(x) if len(str(x))==1 else str(x))
+
 
 
 class Strip(BasePlot):
@@ -51,30 +60,30 @@ class Strip(BasePlot):
             right_on='num_code'
         )
 
-        counties_per_state = ndf.groupby(['fips','letter_abbr']) \
-            .size() \
-            .reset_index() \
-            .rename(columns={0:'count'}) \
-            .groupby('letter_abbr')['fips'] \
-            .size() \
-            .reset_index()
+        # counties_per_state = ndf.groupby(['fips','letter_abbr']) \
+        #     .size() \
+        #     .reset_index() \
+        #     .rename(columns={0:'count'}) \
+        #     .groupby('letter_abbr')['fips'] \
+        #     .size() \
+        #     .reset_index()
 
-        check1 = usa_map \
+        check1 = self.v.gdf \
             .groupby('STATEFP') \
             .size() \
             .reset_index() \
             .set_index("STATEFP") \
             .sort_index()
 
-        check2 = ndf.groupby(['fips','num_code']) \
-            .size() \
-            .reset_index() \
-            .rename(columns={0:'count'}) \
-            .groupby('num_code')['fips'] \
-            .size() \
-            .reset_index() \
-            .set_index('num_code') \
-            .sort_index()
+        # check2 = ndf.groupby(['fips','num_code']) \
+        #     .size() \
+        #     .reset_index() \
+        #     .rename(columns={0:'count'}) \
+        #     .groupby('num_code')['fips'] \
+        #     .size() \
+        #     .reset_index() \
+        #     .set_index('num_code') \
+        #     .sort_index()
 
         #gdf.head()
 
@@ -82,7 +91,7 @@ class Strip(BasePlot):
 
         # print(counties_per_state)
 
-        moder = ndf.loc[ndf[v.cols].sum(axis=1)>0,]
+        moder = ndf.loc[ndf[self.v.cols].sum(axis=1)>0,]
         lst_row = []
 
         for i in self.v.cols:
