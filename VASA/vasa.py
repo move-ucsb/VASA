@@ -140,12 +140,25 @@ class VASA:
     def save_output(self, date, fips, vars):
         return 1
 
-    def lisa(self) -> None:
+    def impute(self):
+        from sklearn.impute import SimpleImputer
+
+        imp_mean = SimpleImputer(missing_values=np.nan, strategy="mean")
+
+        data = np.array(self.df["distance_traveled_from_home"].tolist())
+        self.df["distance_traveled_from_home"] = imp_mean.fit_transform(data).tolist()
+
+
+    def lisa(self, k=0) -> None:
         num_processes = cpu_count()
 
-        W = lps.weights.Queen(self.gdf["geometry"])
-        W.transform = 'r'
-        self.W = W
+        if k > 0:
+            W = lps.weights.KNN.from_dataframe(self.gdf, "geometry", k=k)
+            self.W = W
+        else: 
+            W = lps.weights.Queen(self.gdf["geometry"])
+            W.transform = 'r'
+            self.W = W
         
         with Pool(num_processes) as pool:
             for col in self.cols:
