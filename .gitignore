@@ -6,6 +6,7 @@ __pycache__
 .vscode
 data/*
 !data/counties.json
-test_figures/*
 prep2.py
 test2.ipynb
+workspace.code-workspace
+myenv
