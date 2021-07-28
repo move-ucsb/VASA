@@ -140,13 +140,40 @@ class VASA:
     def save_output(self, date, fips, vars):
         return 1
 
-    def impute(self):
-        from sklearn.impute import SimpleImputer
+    def dropMissing(self):
+        d = np.array(self.df["distance_traveled_from_home"].tolist())
 
-        imp_mean = SimpleImputer(missing_values=np.nan, strategy="mean")
+        toKeep = np.logical_not(np.all(np.isnan(d), axis=0))
+
+        self.df["distance_traveled_from_home"] = d[:, toKeep].tolist()
+        newFips = self.fips_order[toKeep]
+        self.fips_order = newFips
+
+        # print(len(newFips))
+        newFipsDf = pd.DataFrame({ "newFips": newFips})
+        self.gdf = self.gdf.merge(newFipsDf, left_on="GEOID", right_on="newFips", how="right").reset_index(drop=True)
+
+    def impute(self):
+        # from sklearn.impute import SimpleImputer
+
+        # imp_mean = SimpleImputer(missing_values=np.nan, strategy="mean")
 
         data = np.array(self.df["distance_traveled_from_home"].tolist())
-        self.df["distance_traveled_from_home"] = imp_mean.fit_transform(data).tolist()
+
+        def moving_average(x):
+            return np.convolve(np.nan_to_num(x), np.ones(7), 'same') / 7
+
+        def combine_ma(x):
+            to_remove = np.logical_not(np.isnan(x))
+            ma = moving_average(x)
+            ma[to_remove] = x[to_remove]
+            return ma
+
+        # this is over all the data, could just do the partial missing
+        # any_missing = d[:, np.any(np.isnan(d), axis=0)]
+        # partial_missing = any_missing[:, np.any(np.logical_not(np.isnan(any_missing)), axis=0)]
+
+        self.df["distance_traveled_from_home"] = np.apply_along_axis(combine_ma, 0, data).tolist()
 
 
     def lisa(self, k=0) -> None:
