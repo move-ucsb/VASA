@@ -21,8 +21,8 @@ class Scatter(BasePlot):
     # showLines: bool or List[int] # fips
     def plot(self, titles: str or List[str] = ""):
         fig, axes = plt.subplots(
-            math.ceil(len(v.cols) / 2),
-            min(len(v.cols), 2),
+            math.ceil(len(self.v.cols) / 2),
+            min(len(self.v.cols), 2),
             figsize=(8, 8),
             sharex=True,
             sharey=True
