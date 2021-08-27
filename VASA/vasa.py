@@ -12,6 +12,8 @@ from functools import partial
 from multiprocessing import cpu_count, Pool
 from datetime import datetime as dt
 
+from splot.libpysal import plot_spatial_weights
+
 # Commented out for testing...
 from .reduce_vasa_df import *
 
@@ -140,25 +142,57 @@ class VASA:
     def save_output(self, date, fips, vars):
         return 1
 
-    def dropMissing(self, thresh=0.15):
-        d = np.array(self.df["distance_traveled_from_home"].tolist())
+    def pct_partial_missing(self) -> np.array[float]:
+        output = []
 
-        toKeep = np.logical_not(np.all(np.isnan(d), axis=0))
+        for col in self.cols:
+            d = np.array(self.df[col].tolist())
+            n_total = len(d[0])
+            n_partial_missing = len(d[:, np.any(np.isnan(d), axis=0)][0])
+            pct_partial_missing = n_partial_missing / n_total * 100
+            output.append(pct_partial_missing)
 
-        self.df["distance_traveled_from_home"] = d[:, toKeep].tolist()
-        newFips = self.fips_order[toKeep]
-        self.fips_order = newFips
+        return np.array(output) - self.pct_full_missing()
 
-        # print(len(newFips))
-        newFipsDf = pd.DataFrame({ "newFips": newFips})
-        self.gdf = self.gdf.merge(newFipsDf, left_on="GEOID", right_on="newFips", how="right").reset_index(drop=True)
+    def pct_full_missing(self) -> np.array[float]:
+        output = []
+
+        for col in self.cols:
+            d = np.array(self.df[col].tolist())
+            n_total = len(d[0])
+            n_all_missing = len(d[:, np.all(np.isnan(d), axis=0)][0])
+            pct_all_missing = n_all_missing / n_total * 100
+            output.append(pct_all_missing)
+
+        return np.array(output)
+
+    def drop_missing(self, thresh: int = 0.2):
+        for col in self.cols:
+            d = np.array(self.df[col].tolist())
+
+            to_keep = np.mean(np.isnan(d), axis=0) < thresh
+
+            self.df[col] = d[:, to_keep].tolist()
+            new_fips = self.fips_order[to_keep]
+            self.fips_order = new_fips
+
+            new_fips_df = pd.DataFrame({"new_fips": new_fips}) \
+                .astype({"new_fips": str})
+
+            self.gdf = self.gdf \
+                .astype({self.gdf_group_col: str}) \
+                .merge(
+                    new_fips_df,
+                    left_on=self.gdf_group_col,
+                    right_on="new_fips",
+                    how="right"
+                ) \
+                .reset_index(drop=True)
 
     def impute(self):
         # from sklearn.impute import SimpleImputer
 
         # imp_mean = SimpleImputer(missing_values=np.nan, strategy="mean")
-
-        data = np.array(self.df["distance_traveled_from_home"].tolist())
 
         def moving_average(x):
             return np.convolve(np.nan_to_num(x), np.ones(7), 'same') / 7
@@ -169,31 +203,40 @@ class VASA:
             ma[to_remove] = x[to_remove]
             return ma
 
-        # this is over all the data, could just do the partial missing
-        # any_missing = d[:, np.any(np.isnan(d), axis=0)]
-        # partial_missing = any_missing[:, np.any(np.logical_not(np.isnan(any_missing)), axis=0)]
+        for col in self.cols:
+            data = np.array(self.df[col].tolist())
 
-        self.df["distance_traveled_from_home"] = np.apply_along_axis(combine_ma, 0, data).tolist()
+            # this is over all the data, could just do the partial missing
+            # any_missing = d[:, np.any(np.isnan(d), axis=0)]
+            # partial_missing = any_missing[:, np.any(np.logical_not(np.isnan(any_missing)), axis=0)]
 
+            self.df[col] = np.apply_along_axis(combine_ma, 0, data).tolist()
 
-    def lisa(self, k=0) -> None:
-        num_processes = cpu_count()
-
+    def __create_w(self, k: int) -> None:
         if k > 0:
-            W = lps.weights.KNN.from_dataframe(self.gdf, "geometry", k=k)
+            W = lps.weights.KNN.from_dataframe(self.gdf.reset_index(drop=True), "geometry", k=k)
             self.W = W
         else: 
             W = lps.weights.Queen(self.gdf["geometry"])
             W.transform = 'r'
             self.W = W
-        
+
+    def show_weights_connection(self, k: int = 0) -> None:
+        self.__create_w(k)
+        plot_spatial_weights(self.W, self.gdf)
+
+    def lisa(self, k: int = 0) -> None:
+        num_processes = cpu_count()
+
+        self.__create_w(k)
+
         with Pool(num_processes) as pool:
             for col in self.cols:
 
                 self.df[col] = list(
                     pool.map(
                         partial(func, col=col,
-                                W=W, sig=0.05, which="fdr"),
+                                W=self.W, sig=0.05, which="fdr"),
                         [row for _, row in self.df.iterrows()]
                     )
                 )
