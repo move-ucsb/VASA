@@ -1,16 +1,3 @@
-#
-#
-#   Don't look through this, We're going to be changing the input to functions and
-#   I've seen better ways to do some of the things here.
-#
-#
-
-#
-#
-#
-#
-#
-
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -70,39 +57,29 @@ import geopandas as gpd
 import math
 
 class StackedChoropleth:
-    
-    def __init__(self, gpd_maps, export, cols, main_folder, desc="", titles='', plot_dim=None, fips_order=None):
 
-        if not isinstance(gpd_maps, list):
-            gpd_maps = [gpd_maps]
+    def __init__(self, v, main_folder, desc="", titles='', plot_dim=None, fips_order=None):
 
-        if not isinstance(cols, list):
-            cols = [cols]
+        cols = v.cols
 
         if not isinstance(titles, list):
             titles = [titles]
 
-        if len(gpd_maps) > 1 and len(cols) > 1:
-            raise "Can only specify multiple maps OR columns."
-
         if not plot_dim:
-            tot = len(gpd_maps) * len(cols) 
+            tot = len(cols) 
             if tot > 1:
                 plot_dim = (2, math.ceil(tot / 2))
             if tot == 1:
-                plot_dim = (1, 1)    
+                plot_dim = (1, 1)
 
-        if plot_dim[0] * plot_dim[1] != len(cols) * len(gpd_maps) and plot_dim[0] * plot_dim[1] != len(cols) * len(gpd_maps) + 1:
-            raise "Dimension does not match specified colums."
-
-        self._gpd_maps = gpd_maps
+        self._gpd_maps = [v.gdf]
         self._cols = cols
-        self._export = export
+        self.v = v
         self._plot_dim = plot_dim
         self._desc = desc if desc else "-".join(cols)
         self._titles = titles if titles else cols
 
-        self._fips_order = fips_order
+        self._fips_order = v.fips_order
         self._state_col = "STATEFP"
 
         self.count_subfolder = f'{main_folder}/count/'
@@ -118,7 +95,8 @@ class StackedChoropleth:
         self._plot_title_size = 14
         self._font_size = 12
 
-        self._figsize = (10, 8)
+        # self._figsize = (10, 8)
+        self._figsize = (6, 4)
 
     #
     #   MAPPING OPTIONS
@@ -129,10 +107,10 @@ class StackedChoropleth:
             self.__collapse_count()
 
         self.__create_choropleth(
-            self._collapse_count_hot, 
-            self._collapse_count_cold, 
+            self._collapse_count_hot,
+            self._collapse_count_cold,
             typ=self._count_title, 
-            labels=self._count_labels, # Start date to End Date
+            labels=self._count_labels,  # Start date to End Date
             figsize=self._figsize,
             output_folder=self.count_subfolder
         )
@@ -243,18 +221,18 @@ class StackedChoropleth:
                 # Row wise:
                 ax = utility.get_axis(axes, (map_idx + j) // self._plot_dim[0], (map_idx + j) % self._plot_dim[1])
 
-                norm = colors.Normalize(vmin=0.5, vmax=max([*hots[map_idx + j], *colds[map_idx + j]]))
+                norm = colors.Normalize(vmin=0.5, vmax=max([*hots[col], *colds[col]]))
                 ax.set_title(self._titles[map_idx + j], fontsize=self._plot_title_size)
                 ax.set_axis_off()
 
                 #self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
-                self.__create_choropleth_map(hots[map_idx + j], ax, gpd_map, self.__get_pallete("Reds"), norm)
-                self.__create_choropleth_map(colds[map_idx + j], ax, gpd_map, self.__get_pallete("Blues"), norm)
+                self.__create_choropleth_map(hots[col], ax, gpd_map, self.__get_pallete("Reds"), norm)
+                self.__create_choropleth_map(colds[col], ax, gpd_map, self.__get_pallete("Blues"), norm)
         
         self.__create_choropleth_legend_horiz(fig, typ, labels)
 
-        utility.save_plot(self._desc)
+        # utility.save_plot(self._desc)
 
     def __create_choropleth_map(self, data, ax, gpd_map, palette, norm, **kwargs):
         gpd_map \
@@ -348,64 +326,12 @@ class StackedChoropleth:
         self._collapse_count_combined = collapsed
 
     def __collapse_count(self):
-        collapsed_hot = {}
-        collapsed_cold = {}
-
-        for map_idx, gpd_map in enumerate(self._gpd_maps):
-            for i, col in enumerate(self._cols):
-
-                length = gpd_map.shape[0]
-
-                stacked_hot = np.array([0] * length)
-                stacked_cold = np.array([0] * length)
-
-                for week_arr in self._export[col]:
-                    arr_hot, arr_cold = list(zip(*[(a % 2 == 1, a != 0 and a % 2 == 0) for a in self.__filter_state(gpd_map, week_arr)]))
-                    stacked_hot = stacked_hot + arr_hot
-                    stacked_cold = stacked_cold + arr_cold
-
-                collapsed_hot[map_idx + i] = stacked_hot
-                collapsed_cold[map_idx + i] = stacked_cold
-
-        # set second title label to max number ??
-
-        self._collapse_count_hot = collapsed_hot
-        self._collapse_count_cold = collapsed_cold
+        self._collapse_count_hot = self.v.reduce("count_hh")
+        self._collapse_count_cold = self.v.reduce("count_ll")
         
-    def __collapse_recent(self):
-        collapsed_hot = {}
-        collapsed_cold = {}
-
-
-        for map_idx, gpd_map in enumerate(self._gpd_maps):
-            for i, col in enumerate(self._cols):
-
-                length = gpd_map.shape[0]
-
-                stacked_hot = [0] * length
-                stacked_cold = [0] * length
-
-                for week_num, week_arr in enumerate(self._export[col]):
-                    arr_hot, arr_cold = list(zip(*[
-                        ((week_num + 1) * (a % 2 == 1), (week_num + 1) * (a % 2 == 0 and a != 0)) 
-                        for a in self.__filter_state(gpd_map, week_arr)
-                    ]))
-                    stacked_hot = [max(arr_hot[i], stacked_hot[i]) for i in range(length)]
-                    stacked_cold = [max(arr_cold[i], stacked_cold[i]) for i in range(length)]
-
-                # If hot and cold, pick most recent value ---- should be by cound I thinkk ahh
-                for j, (h, c) in enumerate(zip(stacked_hot, stacked_cold)):
-                    if h > 0 and c > 0:
-                        if h > 0:
-                            stacked_cold[j] = 0
-                        else:
-                            stacked_hot[j] = 0
-
-                collapsed_hot[map_idx + i] = stacked_hot
-                collapsed_cold[map_idx + i] = stacked_cold
-
-        self._collapse_recent_hot = collapsed_hot
-        self._collapse_recent_cold = collapsed_cold
+    def __collapse_recent(self)
+        self._collapse_recent_hot = self.v.reduce("recency_hh")
+        self._collapse_recent_cold = self.v.reduce("recency_hh")
 
     def __filter_state(self, map_data, arr):
     

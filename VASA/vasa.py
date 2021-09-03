@@ -22,6 +22,10 @@ class VASA:
     """
     A standard data object for VASA plots
 
+    Examples
+    --------
+    >>> from VASA import VASA
+    >>> ...
 
     Parameters
     ----------
@@ -48,7 +52,24 @@ class VASA:
         temp_res: Literal["day", "week", "month", "year"] = "week"
     ) -> None:
         """
-            DOCSTRING
+            Initialize the VASA object with data.
+
+            Parameters
+            ----------
+            df: str or pd.DataFrame,
+                Pandas DataFrame for data in a long format with the date
+            gdf: gpd.GeoDataFrame,
+                Geopandas DataFrame for shape file
+            df_group_col: str = "fips",
+                Column name in the Pandas DataFrame with the geometry fips code or id
+            gdf_group_col: str = "fips",
+                Column name in the GeoPandas DataFrame with the geometry fips code or id
+            date_col: str = "date",
+                Name of the column containing the date string in the Pandas DataFrame
+            date_format: str = "%Y-%m-%d",
+                Format of the date to convert, set to an empty string if already datetime objects
+            temp_res: Literal["day", "week", "month", "year"] = "week"
+
         """
         if isinstance(df, str):
             df = pd.read_csv(df)
@@ -68,17 +89,18 @@ class VASA:
         )
 
         # Convert date column to dates
-        if isinstance(self.df[self.date_col].dtypes, object):
+        if date_format != "" and isinstance(self.df[self.date_col].dtypes, object):
             self.df[self.date_col] = self.df[self.date_col].apply(
                 lambda x: dt.strptime(x, self.date_format).date()
             )
         # NUMPY DATES ??
 
-        # self.group()
+        self.__group()
 
     # WE NEED TO CHECK IF THERE IS ONLY ONE GROUP.
     # IF WE ONLY HAVE DATES Jan 1-6, Are these always grouped together?
-    def group(self) -> None:
+
+    def __group(self) -> None:
         # pass in functions other than mean
         agg_dict = dict(zip(
             [*self.cols, self.date_col],
@@ -130,15 +152,18 @@ class VASA:
         self.df = output
         # return (output, ordered[self.gdf_group_col])
 
+    # I dont use this anywhere...
     # specify column...
     def get_county(self, fips: int, date="all") -> List[int]:
         i = list(self.fips_order).index(fips)
         return [row[self.cols[0]][i] for _, row in self.df.iterrows()]
 
+    # I dont use this anywhere...
     # df / list idk, specify columns
     def get_week(self, i: int) -> pd.DataFrame:
-        return self.df.loc[i, self.cols[0]]
+        return self.df.loc[i, self.cols]
 
+    # not implemented:
     def save_output(self, date, fips, vars):
         return 1
 
@@ -212,23 +237,74 @@ class VASA:
 
             self.df[col] = np.apply_along_axis(combine_ma, 0, data).tolist()
 
-    def __create_w(self, k: int) -> None:
+    def fill_missing(self):
+        for col in self.cols:
+            d = np.array(self.df[col].tolist())
+
+            row_means = np.nanmean(d, axis=1)
+            inds = np.where(np.isnan(d))
+            d[inds] = np.take(row_means, inds[0])
+
+            self.df[col] = d.tolist()
+
+    def __create_w(self, k: int, band: int = 0, type: str = "queens") -> None:
+        self.gdf = self.gdf.reset_index(drop=True)
+
         if k > 0:
-            W = lps.weights.KNN.from_dataframe(self.gdf.reset_index(drop=True), "geometry", k=k)
+            W = lps.weights.KNN.from_dataframe(self.gdf, "geometry", k=k)
             self.W = W
-        else: 
-            W = lps.weights.Queen(self.gdf["geometry"])
+
+        if band > 0:
+            self.W = lps.weights.DistanceBand.from_dataframe(self.gdf, threshold=band)
+        elif type == "queens" or type == "union": 
+            W = lps.weights.Queen.from_dataframe(self.gdf)
             W.transform = 'r'
-            self.W = W
 
-    def show_weights_connection(self, k: int = 0) -> None:
-        self.__create_w(k)
-        plot_spatial_weights(self.W, self.gdf)
+            if type == "union":
+                self.W = lps.weights.w_union(self.W, W)
+            else:
+                self.W = W
 
-    def lisa(self, k: int = 0) -> None:
+    def show_weights_connection(self, figsize=(6, 6), k: int = 0, band: int = 0, type: str = "queens", ax=None) -> None:
+        """
+        Shows the weight connection of the passed in geodataframe.
+
+        Call drop_missing() first to see the connection among geometries without missing values.
+
+        Parameters
+        ----------
+        k: int = 0
+            Number of neighbors in weights connection
+            Leaving k as 0 (default) uses queen's
+        """
+        self.__create_w(k, band, type)
+
+        if ax:
+            plot_spatial_weights(self.W, self.gdf, figsize=figsize, ax=ax)
+        else:
+            plot_spatial_weights(self.W, self.gdf, figsize=figsize)
+
+
+    def lisa(self, k: int = 0, band: int = 0, type: str = "queens", sig: float = 0.05, method: "fdr" | "bon" | "sim" = "fdr") -> None:
+        """
+        Calculates local moran I over the time period.
+
+        Parameters
+        ----------
+        k: int = 0
+            Number of neighbors in weights connection
+            Leaving k as 0 (default) uses queen's
+        sig: float = 0.05
+            Significance level
+            Default is alpha = 0.05
+        method: "fdr" | "bon" | "sim" = "fdr"
+            Default to using the False Discovery Rate (fdr),
+            other options include Bon Ferroni (bon) or just the
+            simulated p-values directly from the local moran test (sim).
+        """
         num_processes = cpu_count()
 
-        self.__create_w(k)
+        self.__create_w(k, band, type)
 
         with Pool(num_processes) as pool:
             for col in self.cols:
@@ -236,7 +312,7 @@ class VASA:
                 self.df[col] = list(
                     pool.map(
                         partial(func, col=col,
-                                W=self.W, sig=0.05, which="fdr"),
+                                W=self.W, sig=sig, which=method),
                         [row for _, row in self.df.iterrows()]
                     )
                 )
@@ -272,6 +348,14 @@ class VASA:
             Callable[[List[List[int]]], List[int]]
         )
     ) -> pd.DataFrame:
+        """
+        Calculates values to describe each geographic unit over the entire time period
+
+        Parameters
+        ----------
+        reduce: Literal["count", "recency", "count_hh", "count_ll", "mode"] | Callable[[List[List[int]]], List[int]]
+            The name of the built-in reducing function or a custom one
+        """
         copy: pd.DataFrame = self.df[self.cols].copy()
 
         if reduce == "count":
@@ -282,6 +366,10 @@ class VASA:
             reduce = reduce_by_count_ll
         elif reduce == "recency":
             reduce = reduce_by_recency
+        elif reduce == "recency_hh":
+            reduce = reduce_by_recency_hh
+        elif reduce == "recency_ll":
+            reduce = reduce_by_recency_ll
         elif reduce == "mode_sig":
             reduce = reduce_by_mode_sig
         elif reduce == "mode":
