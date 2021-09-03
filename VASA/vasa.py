@@ -22,13 +22,10 @@ class VASA:
     """
     A standard data object for VASA plots
 
-<<<<<<< HEAD
     Examples
     --------
     >>> from VASA import VASA
     >>> ...
-=======
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
 
     Parameters
     ----------
@@ -55,7 +52,6 @@ class VASA:
         temp_res: Literal["day", "week", "month", "year"] = "week"
     ) -> None:
         """
-<<<<<<< HEAD
             Initialize the VASA object with data.
 
             Parameters
@@ -74,9 +70,6 @@ class VASA:
                 Format of the date to convert, set to an empty string if already datetime objects
             temp_res: Literal["day", "week", "month", "year"] = "week"
 
-=======
-            DOCSTRING
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
         """
         if isinstance(df, str):
             df = pd.read_csv(df)
@@ -96,30 +89,18 @@ class VASA:
         )
 
         # Convert date column to dates
-<<<<<<< HEAD
         if date_format != "" and isinstance(self.df[self.date_col].dtypes, object):
-=======
-        if isinstance(self.df[self.date_col].dtypes, object):
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
             self.df[self.date_col] = self.df[self.date_col].apply(
                 lambda x: dt.strptime(x, self.date_format).date()
             )
         # NUMPY DATES ??
 
-<<<<<<< HEAD
         self.__group()
 
     # WE NEED TO CHECK IF THERE IS ONLY ONE GROUP.
     # IF WE ONLY HAVE DATES Jan 1-6, Are these always grouped together?
 
     def __group(self) -> None:
-=======
-        # self.group()
-
-    # WE NEED TO CHECK IF THERE IS ONLY ONE GROUP.
-    # IF WE ONLY HAVE DATES Jan 1-6, Are these always grouped together?
-    def group(self) -> None:
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
         # pass in functions other than mean
         agg_dict = dict(zip(
             [*self.cols, self.date_col],
@@ -171,28 +152,18 @@ class VASA:
         self.df = output
         # return (output, ordered[self.gdf_group_col])
 
-<<<<<<< HEAD
     # I dont use this anywhere...
-=======
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
     # specify column...
     def get_county(self, fips: int, date="all") -> List[int]:
         i = list(self.fips_order).index(fips)
         return [row[self.cols[0]][i] for _, row in self.df.iterrows()]
 
-<<<<<<< HEAD
     # I dont use this anywhere...
     # df / list idk, specify columns
     def get_week(self, i: int) -> pd.DataFrame:
         return self.df.loc[i, self.cols]
 
     # not implemented:
-=======
-    # df / list idk, specify columns
-    def get_week(self, i: int) -> pd.DataFrame:
-        return self.df.loc[i, self.cols[0]]
-
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
     def save_output(self, date, fips, vars):
         return 1
 
@@ -266,7 +237,6 @@ class VASA:
 
             self.df[col] = np.apply_along_axis(combine_ma, 0, data).tolist()
 
-<<<<<<< HEAD
     def fill_missing(self):
         for col in self.cols:
             d = np.array(self.df[col].tolist())
@@ -295,7 +265,7 @@ class VASA:
             else:
                 self.W = W
 
-    def show_weights_connection(self, figsize=(6, 6), k: int = 0, band: int = 0, type: str = "queens") -> None:
+    def show_weights_connection(self, figsize=(6, 6), k: int = 0, band: int = 0, type: str = "queens", ax=None) -> None:
         """
         Shows the weight connection of the passed in geodataframe.
 
@@ -308,7 +278,12 @@ class VASA:
             Leaving k as 0 (default) uses queen's
         """
         self.__create_w(k, band, type)
-        plot_spatial_weights(self.W, self.gdf, figsize=figsize)
+
+        if ax:
+            plot_spatial_weights(self.W, self.gdf, figsize=figsize, ax=ax)
+        else:
+            plot_spatial_weights(self.W, self.gdf, figsize=figsize)
+
 
     def lisa(self, k: int = 0, band: int = 0, type: str = "queens", sig: float = 0.05, method: "fdr" | "bon" | "sim" = "fdr") -> None:
         """
@@ -330,25 +305,6 @@ class VASA:
         num_processes = cpu_count()
 
         self.__create_w(k, band, type)
-=======
-    def __create_w(self, k: int) -> None:
-        if k > 0:
-            W = lps.weights.KNN.from_dataframe(self.gdf.reset_index(drop=True), "geometry", k=k)
-            self.W = W
-        else: 
-            W = lps.weights.Queen(self.gdf["geometry"])
-            W.transform = 'r'
-            self.W = W
-
-    def show_weights_connection(self, k: int = 0) -> None:
-        self.__create_w(k)
-        plot_spatial_weights(self.W, self.gdf)
-
-    def lisa(self, k: int = 0) -> None:
-        num_processes = cpu_count()
-
-        self.__create_w(k)
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
 
         with Pool(num_processes) as pool:
             for col in self.cols:
@@ -356,11 +312,7 @@ class VASA:
                 self.df[col] = list(
                     pool.map(
                         partial(func, col=col,
-<<<<<<< HEAD
                                 W=self.W, sig=sig, which=method),
-=======
-                                W=self.W, sig=0.05, which="fdr"),
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
                         [row for _, row in self.df.iterrows()]
                     )
                 )
@@ -396,7 +348,6 @@ class VASA:
             Callable[[List[List[int]]], List[int]]
         )
     ) -> pd.DataFrame:
-<<<<<<< HEAD
         """
         Calculates values to describe each geographic unit over the entire time period
 
@@ -405,8 +356,6 @@ class VASA:
         reduce: Literal["count", "recency", "count_hh", "count_ll", "mode"] | Callable[[List[List[int]]], List[int]]
             The name of the built-in reducing function or a custom one
         """
-=======
->>>>>>> 32dc93af2d375f32c56053c710c69184224c9a08
         copy: pd.DataFrame = self.df[self.cols].copy()
 
         if reduce == "count":
@@ -417,6 +366,10 @@ class VASA:
             reduce = reduce_by_count_ll
         elif reduce == "recency":
             reduce = reduce_by_recency
+        elif reduce == "recency_hh":
+            reduce = reduce_by_recency_hh
+        elif reduce == "recency_ll":
+            reduce = reduce_by_recency_ll
         elif reduce == "mode_sig":
             reduce = reduce_by_mode_sig
         elif reduce == "mode":

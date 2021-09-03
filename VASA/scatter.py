@@ -16,6 +16,7 @@ class Scatter(BasePlot):
 
         self.v: VASA = v
         self.plotted = False
+        self.fontsize = 14
 
     # plot args for like colors??
     # showLines: bool or List[int] # fips
@@ -41,30 +42,9 @@ class Scatter(BasePlot):
             suffixes=("_count", "_recency")
         ).reset_index()
 
-        # df["count"] = [
-        #     max(c)
-        #     for c in df["sheltered_in_place_7days_rolling_avg_count"]
-        # ]
-        # df["which"] = [
-        #     (1 if h > c else 0)
-        #     for h, c in df["sheltered_in_place_7days_rolling_avg_count"]
-        # ]
-
-        # df = df.rename(
-        #     { "sheltered_in_place_7days_rolling_avg_recency": "recent" },
-        #     axis="columns"
-        # )
-
-        # print(df)
-
-        # points = df.groupby(["count", "recent"]).agg(np.mean)
-
-        # print(self.axes)
-
         for i, ax in enumerate(self.axes):
             col: str = self.v.cols[i]
 
-            # print(col, df.columns)
 
             points = df[[f"{col}_count", f"{col}_recency"]].copy()
             points["count"] = [
@@ -72,22 +52,19 @@ class Scatter(BasePlot):
                 for c in points[f"{col}_count"]
             ]
             points["which"] = [
-                (1 if h > c else 0)
+                (1 if h > c else (np.nan if h == 0 and c == 0 else 0))
                 for h, c in points[f"{col}_count"]
             ]
             points = points.rename(
                 {f"{col}_recency": "recent"},
                 axis="columns"
             )
-            print(points[points["count"] == 50])
-            #print(points[["recent", "count", "which"]])
 
-            points = points[["recent", "count", "which"]].groupby(["count", "recent"]).agg(np.mean)
+            points = points[["recent", "count", "which"]].dropna().groupby(["count", "recent"]).agg(np.mean)
 
-            print("POINTS HEAD")
-            #print(points.head())
 
             self.__create_scatter(ax, points)
+            self.__axis_format(ax)
 
         self.plotted = True
         #return self.fig
@@ -100,11 +77,23 @@ class Scatter(BasePlot):
             hue="which",
             palette="bwr",
             ax=ax,
-            s=12
+            s=30
         )
-        # _, maxy = ax.get_ylim()
-        # ax.set_xlim(0, maxy)
-        # ax.set_ylim(0.5, maxy)
+
+    def __axis_format(self, ax):
+        _, max_x = ax.get_xlim()
+        ax.set_xlim(0, max_x)
+        ax.set_ylim(0, max_x)
+
+        ax.set_ylabel("Count", fontsize=self.fontsize)
+        ax.set_xlabel("Last Week Number", fontsize=self.fontsize)
+
+        import matplotlib.patches as mpatches
+
+        hot_spot = mpatches.Patch(color="red", label="Hotspot")
+        cold_spot = mpatches.Patch(color="blue", label="Coldspot")
+
+        plt.legend(handles=[hot_spot, cold_spot])
 
     def save_plot(self, *args, **kwargs):
         if not self.plotted:

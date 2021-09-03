@@ -43,15 +43,10 @@ class Strip(BasePlot):
         #self.axes = [axes]
         self.v: VASA = v
 
-    def plot(self):
+    def plot(self, groupId):
         ndf = self.v.reduce("mode")
-        ndf['state_num'] = [
-            str(f // 1000) for f in ndf.fips
-        ]  # .str.slice(start=0, stop=2)
-        ndf['state_num'] = [
-            ("0" + str(f//1000) if f//1000 < 10 else str(f//1000))
-            for f in ndf.fips
-        ]
+        ndf['state_num'] = [groupId(f) for f in ndf.fips]
+
         ndf = pd.merge(
             ndf,
             state_names,
@@ -59,14 +54,6 @@ class Strip(BasePlot):
             left_on='state_num',
             right_on='num_code'
         )
-
-        # counties_per_state = ndf.groupby(['fips','letter_abbr']) \
-        #     .size() \
-        #     .reset_index() \
-        #     .rename(columns={0:'count'}) \
-        #     .groupby('letter_abbr')['fips'] \
-        #     .size() \
-        #     .reset_index()
 
         check1 = self.v.gdf \
             .groupby('STATEFP') \
