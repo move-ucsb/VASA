@@ -372,6 +372,8 @@ class VASA:
             reduce = reduce_by_recency_ll
         elif reduce == "mode_sig":
             reduce = reduce_by_mode_sig
+        elif reduce == "count_combined":
+            reduce = reduce_by_count_combined
         elif reduce == "mode":
             reduce = reduce_by_mode
 
