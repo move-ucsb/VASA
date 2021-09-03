@@ -27,6 +27,19 @@ class VASA:
     >>> from VASA import VASA
     >>> ...
 
+    Parameters
+    ----------
+
+
+    Attributes
+    ----------
+
+
+    Examples
+    --------
+    >>> import libpysal
+
+
     """
     def __init__(
         self,
