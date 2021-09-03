@@ -224,16 +224,35 @@ class VASA:
 
             self.df[col] = np.apply_along_axis(combine_ma, 0, data).tolist()
 
-    def __create_w(self, k: int) -> None:
+    def fill_missing(self):
+        for col in self.cols:
+            d = np.array(self.df[col].tolist())
+
+            row_means = np.nanmean(d, axis=1)
+            inds = np.where(np.isnan(d))
+            d[inds] = np.take(row_means, inds[0])
+
+            self.df[col] = d.tolist()
+
+    def __create_w(self, k: int, band: int = 0, type: str = "queens") -> None:
+        self.gdf = self.gdf.reset_index(drop=True)
+
         if k > 0:
-            W = lps.weights.KNN.from_dataframe(self.gdf.reset_index(drop=True), "geometry", k=k)
-            self.W = W
-        else: 
-            W = lps.weights.Queen(self.gdf["geometry"])
-            W.transform = 'r'
+            W = lps.weights.KNN.from_dataframe(self.gdf, "geometry", k=k)
             self.W = W
 
-    def show_weights_connection(self, k: int = 0) -> None:
+        if band > 0:
+            self.W = lps.weights.DistanceBand.from_dataframe(self.gdf, threshold=band)
+        elif type == "queens" or type == "union": 
+            W = lps.weights.Queen.from_dataframe(self.gdf)
+            W.transform = 'r'
+
+            if type == "union":
+                self.W = lps.weights.w_union(self.W, W)
+            else:
+                self.W = W
+
+    def show_weights_connection(self, figsize=(6, 6), k: int = 0, band: int = 0, type: str = "queens") -> None:
         """
         Shows the weight connection of the passed in geodataframe.
 
@@ -245,10 +264,10 @@ class VASA:
             Number of neighbors in weights connection
             Leaving k as 0 (default) uses queen's
         """
-        self.__create_w(k)
-        plot_spatial_weights(self.W, self.gdf)
+        self.__create_w(k, band, type)
+        plot_spatial_weights(self.W, self.gdf, figsize=figsize)
 
-    def lisa(self, k: int = 0, sig: float = 0.05, method: "fdr" | "bon" | "sim" = "fdr") -> None:
+    def lisa(self, k: int = 0, band: int = 0, type: str = "queens", sig: float = 0.05, method: "fdr" | "bon" | "sim" = "fdr") -> None:
         """
         Calculates local moran I over the time period.
 
@@ -267,7 +286,7 @@ class VASA:
         """
         num_processes = cpu_count()
 
-        self.__create_w(k)
+        self.__create_w(k, band, type)
 
         with Pool(num_processes) as pool:
             for col in self.cols:
