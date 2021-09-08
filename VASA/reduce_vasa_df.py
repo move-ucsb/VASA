@@ -53,6 +53,11 @@ def reduce_by_count_hh(arr: County_History_List) -> County_list:
 def reduce_by_count_ll(arr: County_History_List) -> County_list:
     return reduce_by_count_equals(arr, 2)
 
+
+def reduce_by_count_combined(arr: County_History_List) -> County_list:
+    return [a + b for a, b in reduce_by_count(arr)]
+
+
 #
 # No tests since called from reduce_by_count_**
 #

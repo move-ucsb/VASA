@@ -95,8 +95,8 @@ class StackedChoropleth:
         self._plot_title_size = 14
         self._font_size = 12
 
-        # self._figsize = (10, 8)
-        self._figsize = (6, 4)
+        self._figsize = (10, 8)
+        # self._figsize = (1, 4)
 
     #
     #   MAPPING OPTIONS
@@ -139,8 +139,8 @@ class StackedChoropleth:
         colds = self._collapse_recent_cold
 
         fig, axes = plt.subplots(
-            self._plot_dim[0], 
-            self._plot_dim[1], 
+            self._plot_dim[0],
+            self._plot_dim[1],
             figsize=self._figsize,
         )
         fig.tight_layout()
@@ -158,31 +158,31 @@ class StackedChoropleth:
 
                 map_copy["geometry"] = [
                     col.centroid.buffer(10000 + 11000/40 * count)
-                    for col, count in zip(map_copy['geometry'], self._collapse_count_combined[map_idx + j])
+                    for col, count in zip(map_copy['geometry'], self._collapse_count_combined[col])
                 ]
                 # Row wise:
                 ax = utility.get_axis(axes, (map_idx + j) // self._plot_dim[0], (map_idx + j) % self._plot_dim[1])
 
-                if True: #self._region and self._region[map_idx] == "usa":
-                    ax.set_xlim([-0.235e7, 0.22e7])
-                    ax.set_ylim([-1.75e6, 1.45e6])
-                elif self._region[map_idx] == "ca":
-                    ax.set_xlim([-2.60e6, -1.563e6])
-                    ax.set_ylim([-1e6, 0.65e6])
-                elif self._region[map_idx] == "fl":
-                    ax.set_xlim([0.730e6, 1.570e6])
-                    ax.set_ylim([-1.700e6, -0.950e6])
-                elif self._region[map_idx] == "ny":
-                    ax.set_xlim([1.1e6, 2.0e6])
-                    ax.set_ylim([.03e6, 0.9e6])
-                elif self._region[map_idx] == "tx":
-                    ax.set_xlim([-0.990e6, 0.24e6])
-                    ax.set_ylim([-1.75e6, -0.380e6])
+                # if True: #self._region and self._region[map_idx] == "usa":
+                #     ax.set_xlim([-0.235e7, 0.22e7])
+                #     ax.set_ylim([-1.75e6, 1.45e6])
+                # elif self._region[map_idx] == "ca":
+                #     ax.set_xlim([-2.60e6, -1.563e6])
+                #     ax.set_ylim([-1e6, 0.65e6])
+                # elif self._region[map_idx] == "fl":
+                #     ax.set_xlim([0.730e6, 1.570e6])
+                #     ax.set_ylim([-1.700e6, -0.950e6])
+                # elif self._region[map_idx] == "ny":
+                #     ax.set_xlim([1.1e6, 2.0e6])
+                #     ax.set_ylim([.03e6, 0.9e6])
+                # elif self._region[map_idx] == "tx":
+                #     ax.set_xlim([-0.990e6, 0.24e6])
+                #     ax.set_ylim([-1.75e6, -0.380e6])
 
                 # if adding new state start with looking at state bounds:
                 # print(gpd_map.total_bounds)
 
-                norm = colors.Normalize(vmin=1, vmax=max([*hots[map_idx + j], *colds[map_idx + j]]))
+                norm = colors.Normalize(vmin=1, vmax=max([*hots[col], *colds[col]]))
 
                 if len(self._titles) > 1:
                     ax.set_title(self._titles[map_idx + j], fontsize=self._plot_title_size)
@@ -190,8 +190,8 @@ class StackedChoropleth:
 
                 #self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
-                self.__create_choropleth_map(hots[map_idx + j], ax, map_copy, self.__get_pallete("Reds"), norm)
-                self.__create_choropleth_map(colds[map_idx + j], ax, map_copy, self.__get_pallete("Blues"), norm)
+                self.__create_choropleth_map(hots[col], ax, map_copy, self.__get_pallete("Reds"), norm)
+                self.__create_choropleth_map(colds[col], ax, map_copy, self.__get_pallete("Blues"), norm)
                 
         if len(self._titles) == 1:
             fig.suptitle(self._titles[0], fontsize=self._plot_title_size)
@@ -232,7 +232,8 @@ class StackedChoropleth:
         
         self.__create_choropleth_legend_horiz(fig, typ, labels)
 
-        # utility.save_plot(self._desc)
+        utility.save_plot(self._desc)
+        plt.close(fig)
 
     def __create_choropleth_map(self, data, ax, gpd_map, palette, norm, **kwargs):
         gpd_map \
@@ -309,29 +310,15 @@ class StackedChoropleth:
     #   CALCULATIONS:
     #
     def __collapse_count_combined(self):
-        collapsed = {}
-
-        for map_idx, gpd_map in enumerate(self._gpd_maps):
-            for i, col in enumerate(self._cols):
-                stacked = np.array([0] * gpd_map.shape[0])
-
-                for week_arr in self._export[col]:
-                    arr = [(a != 0) for a in self.__filter_state(gpd_map, week_arr)]
-                    stacked = stacked + arr
-
-                collapsed[map_idx + i] = stacked
-
-        # set second title label to max number ??
-
-        self._collapse_count_combined = collapsed
+        self._collapse_count_combined = self.v.reduce('count_combined')
 
     def __collapse_count(self):
         self._collapse_count_hot = self.v.reduce("count_hh")
         self._collapse_count_cold = self.v.reduce("count_ll")
         
-    def __collapse_recent(self)
+    def __collapse_recent(self):
         self._collapse_recent_hot = self.v.reduce("recency_hh")
-        self._collapse_recent_cold = self.v.reduce("recency_hh")
+        self._collapse_recent_cold = self.v.reduce("recency_ll")
 
     def __filter_state(self, map_data, arr):
     
@@ -462,5 +449,6 @@ class StackedChoropleth:
                 self.__create_choropleth_map(hots[map_idx + j], ax, gpd_map, self.__get_pallete("Reds"), norm)
                 self.__create_choropleth_map(colds[map_idx + j], ax, gpd_map, self.__get_pallete("Blues"), norm)
         
+
 
         utility.save_plot(self._desc)
