@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
+from scipy.stats import mode
 import math
 from typing import List
 
@@ -20,7 +21,7 @@ class Scatter(BasePlot):
 
     # plot args for like colors??
     # showLines: bool or List[int] # fips
-    def plot(self, titles: str or List[str] = ""):
+    def plot(self, highlight: str = "", titles: str or List[str] = ""):
         fig, axes = plt.subplots(
             math.ceil(len(self.v.cols) / 2),
             min(len(self.v.cols), 2),
@@ -60,14 +61,53 @@ class Scatter(BasePlot):
                 axis="columns"
             )
 
-            points = points[["recent", "count", "which"]].dropna().groupby(["count", "recent"]).agg(np.mean)
+            points = points[["recent", "count", "which"]].dropna().groupby(["count", "recent"]).agg(np.mean).reset_index()
 
 
             self.__create_scatter(ax, points)
             self.__axis_format(ax)
 
+            print(points)
+
+            if highlight != "":
+                self.__draw_lines(highlight, col, ax, [np.min(points["count"]), np.max(points["count"])])
+
         self.plotted = True
         #return self.fig
+
+    def __draw_lines(self, highlight, col, ax, mm):
+        to_select = [self.v.group_summary(f) == highlight for f in self.v.fips_order]
+        lines = np.array(self.v.df[col].tolist())[:, to_select]
+
+        color = mode(lines).mode[0]
+        for i, val in enumerate(color):
+            if val == 0:
+                continue
+
+            color = "#d3d3d3"
+
+            count = np.sum(lines[:, i] != 0)
+            alpha = 0.05
+
+            if count == mm[0] or count == mm[1]:
+                print(count, mm)
+                if val == 1:
+                    color = "red"
+                else:
+                    color = "blue"
+                alpha = 1
+                print("HERE")
+
+            self.__draw_line(ax, lines[:, i], val, color, alpha)
+
+    def __draw_line(self, ax, xs, val, color, alpha):
+        ax.plot(
+            np.arange(1, len(xs) + 1),
+            np.cumsum(xs == val),
+            c=color,
+            alpha=alpha
+        )
+
 
     def __create_scatter(self, ax, df: pd.DataFrame):
         sns.scatterplot(
