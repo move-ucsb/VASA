@@ -45,6 +45,7 @@ class VASA:
         self,
         df: str or pd.DataFrame,
         gdf: gpd.GeoDataFrame,
+        group_summary,
         df_group_col: str = "fips",
         gdf_group_col: str = "fips",
         date_col: str = "date",
@@ -83,6 +84,7 @@ class VASA:
         self.date_col = date_col
         self.date_format = date_format
         self.temp_res = temp_res
+        self.group_summary = group_summary
 
         self.cols: List[str] = list(
             set(df.columns) - {self.df_group_col, self.date_col}
@@ -95,12 +97,12 @@ class VASA:
             )
         # NUMPY DATES ??
 
-        self.__group()
+        # self.__group()
 
     # WE NEED TO CHECK IF THERE IS ONLY ONE GROUP.
     # IF WE ONLY HAVE DATES Jan 1-6, Are these always grouped together?
 
-    def __group(self) -> None:
+    def group(self) -> None:
         # pass in functions other than mean
         agg_dict = dict(zip(
             [*self.cols, self.date_col],
@@ -151,6 +153,8 @@ class VASA:
         self.fips_order = ordered[self.gdf_group_col]
         self.df = output
         # return (output, ordered[self.gdf_group_col])
+
+        return self
 
     # I dont use this anywhere...
     # specify column...
@@ -247,7 +251,11 @@ class VASA:
 
             self.df[col] = d.tolist()
 
-    def __create_w(self, k: int, band: int = 0, type: str = "queens") -> None:
+    def filter_group(self):
+        unique_groups = np.unique([self.group_summary(g) for g in self.df[self.df_group_col]])
+        self.gdf = self.gdf[[(self.group_summary(g) in unique_groups) for g in self.gdf[self.gdf_group_col]]]
+
+    def create_w(self, k: int, band: int = 0, type: str = "none") -> None:
         self.gdf = self.gdf.reset_index(drop=True)
 
         if k > 0:
@@ -255,9 +263,9 @@ class VASA:
             self.W = W
 
         if band > 0:
-            self.W = lps.weights.DistanceBand.from_dataframe(self.gdf, threshold=band)
+            self.W = lps.weights.DistanceBand.from_dataframe(self.gdf, threshold=band, geom_col="geometry")
         elif type == "queens" or type == "union": 
-            W = lps.weights.Queen.from_dataframe(self.gdf)
+            W = lps.weights.Queen.from_dataframe(self.gdf, geom_col="geometry")
             W.transform = 'r'
 
             if type == "union":
@@ -265,7 +273,7 @@ class VASA:
             else:
                 self.W = W
 
-    def show_weights_connection(self, figsize=(6, 6), k: int = 0, band: int = 0, type: str = "queens", ax=None) -> None:
+    def show_weights_connection(self, figsize=(6, 6), k: int = 0, band: int = 0, type: str = "none", ax=None) -> None:
         """
         Shows the weight connection of the passed in geodataframe.
 
@@ -277,7 +285,7 @@ class VASA:
             Number of neighbors in weights connection
             Leaving k as 0 (default) uses queen's
         """
-        self.__create_w(k, band, type)
+        self.create_w(k, band, type)
 
         if ax:
             plot_spatial_weights(self.W, self.gdf, figsize=figsize, ax=ax)
@@ -285,7 +293,7 @@ class VASA:
             plot_spatial_weights(self.W, self.gdf, figsize=figsize)
 
 
-    def lisa(self, k: int = 0, band: int = 0, type: str = "queens", sig: float = 0.05, method: "fdr" | "bon" | "sim" = "fdr") -> None:
+    def lisa(self, k: int = 0, band: int = 0, type: str = "none", sig: float = 0.05, method: "fdr" | "bon" | "sim" = "fdr") -> None:
         """
         Calculates local moran I over the time period.
 
@@ -304,7 +312,7 @@ class VASA:
         """
         num_processes = cpu_count()
 
-        self.__create_w(k, band, type)
+        self.create_w(k, band, type)
 
         with Pool(num_processes) as pool:
             for col in self.cols:

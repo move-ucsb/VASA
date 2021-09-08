@@ -157,7 +157,8 @@ class StackedChoropleth:
                 map_copy = gpd_map.copy()
 
                 map_copy["geometry"] = [
-                    col.centroid.buffer(10000 + 11000/40 * count)
+                    col.centroid.buffer(2500 + 11000/40 * count)
+                    # col.centroid.buffer(10000 + 11000/40 * count)
                     for col, count in zip(map_copy['geometry'], self._collapse_count_combined[col])
                 ]
                 # Row wise:
@@ -190,8 +191,8 @@ class StackedChoropleth:
 
                 #self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
-                self.__create_choropleth_map(hots[col], ax, map_copy, self.__get_pallete("Reds"), norm)
-                self.__create_choropleth_map(colds[col], ax, map_copy, self.__get_pallete("Blues"), norm)
+                self.__create_choropleth_map(hots[col], ax, map_copy, self.__get_pallete("Reds"), norm, edgecolor='white')
+                self.__create_choropleth_map(colds[col], ax, map_copy, self.__get_pallete("Blues"), norm, edgecolor='white')
                 
         if len(self._titles) == 1:
             fig.suptitle(self._titles[0], fontsize=self._plot_title_size)
@@ -227,8 +228,8 @@ class StackedChoropleth:
 
                 #self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
-                self.__create_choropleth_map(hots[col], ax, gpd_map, self.__get_pallete("Reds"), norm)
-                self.__create_choropleth_map(colds[col], ax, gpd_map, self.__get_pallete("Blues"), norm)
+                self.__create_choropleth_map(hots[col], ax, gpd_map, self.__get_pallete("Reds"), norm, edgecolor='black')
+                self.__create_choropleth_map(colds[col], ax, gpd_map, self.__get_pallete("Blues"), norm, edgecolor='black')
         
         self.__create_choropleth_legend_horiz(fig, typ, labels)
 
@@ -238,7 +239,7 @@ class StackedChoropleth:
     def __create_choropleth_map(self, data, ax, gpd_map, palette, norm, **kwargs):
         gpd_map \
             .assign(cl = data) \
-            .plot(column='cl', k=2, cmap=palette, edgecolor='black', ax=ax, linewidth=0, norm=norm, **kwargs)
+            .plot(column='cl', k=2, cmap=palette, ax=ax, linewidth=0, norm=norm, **kwargs)
 
     def __create_choropleth_legend_horiz(self, fig, typ, labels):
         #
@@ -408,8 +409,8 @@ class StackedChoropleth:
                 #self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax_hot, gpd_map)
                 self.__show_state_outline(ax_cold, gpd_map)
-                self.__create_choropleth_map(hots[map_idx + j], ax_hot, gpd_map, self.__get_pallete("Reds"), norm)
-                self.__create_choropleth_map(colds[map_idx + j], ax_cold, gpd_map, self.__get_pallete("Blues"), norm)
+                self.__create_choropleth_map(hots[map_idx + j], ax_hot, gpd_map, self.__get_pallete("Reds"), norm, edgecolor='black')
+                self.__create_choropleth_map(colds[map_idx + j], ax_cold, gpd_map, self.__get_pallete("Blues"), norm, edgecolor='black')
         
 
         utility.save_plot(self._desc)
@@ -446,8 +447,8 @@ class StackedChoropleth:
 
                 #self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
-                self.__create_choropleth_map(hots[map_idx + j], ax, gpd_map, self.__get_pallete("Reds"), norm)
-                self.__create_choropleth_map(colds[map_idx + j], ax, gpd_map, self.__get_pallete("Blues"), norm)
+                self.__create_choropleth_map(hots[map_idx + j], ax, gpd_map, self.__get_pallete("Reds"), norm, edgecolor='black')
+                self.__create_choropleth_map(colds[map_idx + j], ax, gpd_map, self.__get_pallete("Blues"), norm, edgecolor='black')
         
 
 
