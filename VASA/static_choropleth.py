@@ -157,7 +157,8 @@ class StackedChoropleth:
                 map_copy = gpd_map.copy()
 
                 map_copy["geometry"] = [
-                    col.centroid.buffer(2500 + 11000/40 * count)
+                    col.centroid.buffer(500 + 1100/4 * count)
+                    # col.centroid.buffer(2500 + 11000/40 * count)
                     # col.centroid.buffer(10000 + 11000/40 * count)
                     for col, count in zip(map_copy['geometry'], self._collapse_count_combined[col])
                 ]
