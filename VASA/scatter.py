@@ -67,36 +67,51 @@ class Scatter(BasePlot):
             self.__create_scatter(ax, points)
             self.__axis_format(ax)
 
-            print(points)
+            # print(df)
 
             if highlight != "":
-                self.__draw_lines(highlight, col, ax, [np.min(points["count"]), np.max(points["count"])])
+                self.__draw_lines(highlight, col, ax, df[[f"{col}_count", "fips"]], f"{col}_count")
 
         self.plotted = True
         #return self.fig
 
-    def __draw_lines(self, highlight, col, ax, mm):
+    def __draw_lines(self, highlight, col, ax, df, c):
+
+        df = df[[self.v.group_summary(f) == highlight for f in df.fips]]
+
         to_select = [self.v.group_summary(f) == highlight for f in self.v.fips_order]
         lines = np.array(self.v.df[col].tolist())[:, to_select]
 
-        color = mode(lines).mode[0]
+        # color = mode(lines).mode[0]
+        color = [(1 if a > b else 2) for a, b in df[c]]
+
+        # print(df[c])
+        uzip_a, uzip_b = list(zip(*df[c]))
+        uzip = np.array([*uzip_a, *uzip_b])
+
+
+        mm = [np.min(uzip[uzip != 0]), np.max(uzip)]
+
+        # mm = [min(np.min(np.array(df[c]))), max(np.max(np.array(df[c])))]
+        # print(mm)
+
         for i, val in enumerate(color):
             if val == 0:
                 continue
 
             color = "#d3d3d3"
 
-            count = np.sum(lines[:, i] != 0)
+            count = np.sum(lines[:, i] == val)
             alpha = 0.05
 
             if count == mm[0] or count == mm[1]:
-                print(count, mm)
+                # print(count, mm)
                 if val == 1:
                     color = "red"
                 else:
                     color = "blue"
                 alpha = 1
-                print("HERE")
+                # print("HERE")
 
             self.__draw_line(ax, lines[:, i], val, color, alpha)
 
