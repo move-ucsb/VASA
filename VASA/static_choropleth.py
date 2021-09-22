@@ -1,6 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.sparse
 
 def set_fig(f):
     def func(self, *args, **kwargs):
@@ -55,6 +56,8 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import math
+import libpysal as lps
+import shapely
 
 class StackedChoropleth:
 
@@ -127,6 +130,69 @@ class StackedChoropleth:
             figsize=self._figsize,
             output_folder=self.recent_subfolder
         )
+
+    def plot_dot_density(self):
+        if '_collapse_count_combined' not in locals():
+            self.__collapse_count_combined()
+
+        if '_collapse_recent_hot' not in locals():
+            self.__collapse_recent()
+        
+        hots = self._collapse_recent_hot
+        colds = self._collapse_recent_cold
+
+        fig, axes = plt.subplots(
+            self._plot_dim[0],
+            self._plot_dim[1],
+            figsize=self._figsize,
+        )
+        fig.tight_layout()
+        #plt.subplots_adjust(hspace=0.1)
+
+        utility = PlotUtility(fig, self.both_subfolder)
+        utility.reduce_padding()
+
+        # Since I'm restricting maps OR col to be a single item this is really a single loop:
+        for map_idx, gpd_map in enumerate(self._gpd_maps):
+
+            for j, col in enumerate(self._cols):
+
+                # map_copy = gpd_map.copy()
+                ax = utility.get_axis(axes, (map_idx + j) // self._plot_dim[0], (map_idx + j) % self._plot_dim[1])
+
+
+                self.v.gdf["classification"] = [(1 if h > c and h > 0 else (2 if c > 0 else 0)) for h, c in zip(hots[col], colds[col])]
+                centroids = self.v.gdf.geometry.centroid
+                x, y = centroids.x, centroids.y
+
+                x_min, x_max = x.min() - 0.5, x.max() + 0.5
+                y_min, y_max = y.min() - 0.5, y.max() + 0.5
+
+                h = 10000
+                xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+                vals = []
+                # pts = np.array([(x, y) for x, y in zip(xx.ravel(), yy.ravel())])
+
+                for i, (x, y) in enumerate(zip(xx.ravel(), yy.ravel())):
+                    print(f"\r{i}, {xx.shape[0] * xx.shape[1]}", end="")
+                    pt = shapely.geometry.Point(x, y)
+                    cnts = self.v.gdf.geometry.contains(pt)
+                    
+                    if np.any(cnts):
+                        vals.append(self.v.gdf[cnts].iloc[0].classification)
+                    else:
+                        vals.append(0)
+
+                Z = np.reshape(vals, xx.shape)
+
+                ax.contourf(xx, yy, Z)
+                self.v.gdf.plot(ax=ax, color="#ffffff00", edgecolor="black", linewidth=1/10)
+                                
+        utility.save_plot(self._desc)
+
+
+
 
     def plot_both(self):
         if '_collapse_count_combined' not in locals():
