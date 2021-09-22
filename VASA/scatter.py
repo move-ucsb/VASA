@@ -63,14 +63,12 @@ class Scatter(BasePlot):
 
             points = points[["recent", "count", "which"]].dropna().groupby(["count", "recent"]).agg(np.mean).reset_index()
 
-
-            self.__create_scatter(ax, points)
-            self.__axis_format(ax)
-
-            # print(df)
-
             if highlight != "":
                 self.__draw_lines(highlight, col, ax, df[[f"{col}_count", "fips"]], f"{col}_count")
+
+            self.__create_scatter(ax, points, zorder=10)
+            self.__axis_format(ax)
+
 
         self.plotted = True
         #return self.fig
@@ -90,7 +88,8 @@ class Scatter(BasePlot):
         uzip = np.array([*uzip_a, *uzip_b])
 
 
-        mm = [np.min(uzip[uzip != 0]), np.max(uzip)]
+        # mm = [np.min(uzip[uzip != 0]), np.max(uzip)]
+        mm = [-1000000, np.max(uzip)]
 
         # mm = [min(np.min(np.array(df[c]))), max(np.max(np.array(df[c])))]
         # print(mm)
@@ -116,15 +115,26 @@ class Scatter(BasePlot):
             self.__draw_line(ax, lines[:, i], val, color, alpha)
 
     def __draw_line(self, ax, xs, val, color, alpha):
+        sig_vals = (xs == val) + 0
+        sig_idcs = np.where(sig_vals == 1)[0]
+
+        if len(sig_idcs) == 0:
+            return
+
+        sig_idcs = sig_idcs[-1] + 1
+
+        # stop line at list sig value
+        xs = xs[:sig_idcs]
+
         ax.plot(
             np.arange(1, len(xs) + 1),
-            np.cumsum(xs == val),
+            np.cumsum(xs == val) + np.random.normal(0, 1/16, size=len(xs)),
             c=color,
             alpha=alpha
         )
 
 
-    def __create_scatter(self, ax, df: pd.DataFrame):
+    def __create_scatter(self, ax, df: pd.DataFrame, **kwargs):
         sns.scatterplot(
             x="recent",
             y="count",
@@ -132,7 +142,8 @@ class Scatter(BasePlot):
             hue="which",
             palette="bwr",
             ax=ax,
-            s=30
+            s=30,
+            **kwargs
         )
 
     def __axis_format(self, ax):
