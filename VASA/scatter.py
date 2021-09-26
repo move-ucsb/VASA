@@ -35,6 +35,10 @@ class Scatter(BasePlot):
         count = self.v.reduce("count")
         recent = self.v.reduce('recency')
 
+        if highlight != "":
+            count = count[[self.v.group_summary(
+                c) == highlight for c in count.fips.values]]
+
         df = count.merge(
             recent,
             left_on="fips",
