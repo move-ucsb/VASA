@@ -46,7 +46,6 @@ class Scatter(BasePlot):
         for i, ax in enumerate(self.axes):
             col: str = self.v.cols[i]
 
-
             points = df[[f"{col}_count", f"{col}_recency"]].copy()
             points["count"] = [
                 max(c)
@@ -61,23 +60,25 @@ class Scatter(BasePlot):
                 axis="columns"
             )
 
-            points = points[["recent", "count", "which"]].dropna().groupby(["count", "recent"]).agg(np.mean).reset_index()
+            points = points[["recent", "count", "which"]].dropna().groupby(
+                ["count", "recent"]).agg(np.mean).reset_index()
 
             if highlight != "":
-                self.__draw_lines(highlight, col, ax, df[[f"{col}_count", "fips"]], f"{col}_count")
+                self.__draw_lines(highlight, col, ax,
+                                  df[[f"{col}_count", "fips"]], f"{col}_count")
 
             self.__create_scatter(ax, points, zorder=10)
             self.__axis_format(ax)
 
-
         self.plotted = True
-        #return self.fig
+        # return self.fig
 
     def __draw_lines(self, highlight, col, ax, df, c):
 
         df = df[[self.v.group_summary(f) == highlight for f in df.fips]]
 
-        to_select = [self.v.group_summary(f) == highlight for f in self.v.fips_order]
+        to_select = [self.v.group_summary(
+            f) == highlight for f in self.v.fips_order]
         lines = np.array(self.v.df[col].tolist())[:, to_select]
 
         # color = mode(lines).mode[0]
@@ -86,7 +87,6 @@ class Scatter(BasePlot):
         # print(df[c])
         uzip_a, uzip_b = list(zip(*df[c]))
         uzip = np.array([*uzip_a, *uzip_b])
-
 
         # mm = [np.min(uzip[uzip != 0]), np.max(uzip)]
         mm = [-1000000, np.max(uzip)]
@@ -101,7 +101,8 @@ class Scatter(BasePlot):
             color = "#d3d3d3"
 
             count = np.sum(lines[:, i] == val)
-            alpha = 0.05
+            # alpha = 0.05
+            alpha = 1
 
             if count == mm[0] or count == mm[1]:
                 # print(count, mm)
@@ -132,7 +133,6 @@ class Scatter(BasePlot):
             c=color,
             alpha=alpha
         )
-
 
     def __create_scatter(self, ax, df: pd.DataFrame, **kwargs):
         sns.scatterplot(
@@ -172,7 +172,6 @@ class Scatter(BasePlot):
     #     sns.scatterplot(x="recent", y="count", data=df, hue="which", palette="bwr", ax=ax)
     #     # slope = 1 line
     #     # ax.plot(range(0, max(xs) + 1), range(0, max(xs) + 1))
-
 
     # def create_scatter(ax, df):
     #     #ax.scatter(xs, ys, c="blue", alpha=0.3)

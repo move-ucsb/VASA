@@ -131,7 +131,21 @@ class StackedChoropleth:
             output_folder=self.recent_subfolder
         )
 
-    def plot_both(self):
+    def plot_both(self, a: int = 2500, b: int = 275):
+        """
+        RECO map showing both number of items the geometry was a significant
+        hot or cold spot (count) and the last time it was a significant
+        value (recency).
+
+        Parameters
+        ----------
+        a: float
+            Circle marker size intercept parameter. Circle marker size is
+            determined by the equation: a + b * (count).
+        b: float
+            Circle marker size scale parameter. Circle marker size is
+            determined by the equation: a + b * (count).
+        """
         if '_collapse_count_combined' not in locals():
             self.__collapse_count_combined()
 
@@ -161,7 +175,7 @@ class StackedChoropleth:
 
                 map_copy["geometry"] = [
                     #col.centroid.buffer(100 + 200/4 * count)
-                    col.centroid.buffer(2500 + 11000/40 * count)
+                    col.centroid.buffer(a + b * count)
                     #col.centroid.buffer(10000 + 11000/40 * count)
                     for col, count in zip(map_copy['geometry'], self._collapse_count_combined[col])
                 ]
