@@ -35,10 +35,6 @@ class Scatter(BasePlot):
         count = self.v.reduce("count")
         recent = self.v.reduce('recency')
 
-        if highlight != "":
-            count = count[[self.v.group_summary(
-                c) == highlight for c in count.fips.values]]
-
         df = count.merge(
             recent,
             left_on="fips",
@@ -46,6 +42,14 @@ class Scatter(BasePlot):
             how="inner",
             suffixes=("_count", "_recency")
         ).reset_index()
+
+        if df.shape[0] == 0:
+            return
+
+        if highlight != "":
+            df = df[[
+                self.v.group_summary(c) == highlight for c in df.fips.values
+            ]].reset_index()
 
         for i, ax in enumerate(self.axes):
             col: str = self.v.cols[i]
@@ -89,11 +93,11 @@ class Scatter(BasePlot):
         color = [(1 if a > b else 2) for a, b in df[c]]
 
         # print(df[c])
-        uzip_a, uzip_b = list(zip(*df[c]))
-        uzip = np.array([*uzip_a, *uzip_b])
+        # uzip_a, uzip_b = list(zip(*df[c]))
+        # uzip = np.array([*uzip_a, *uzip_b])
 
         # mm = [np.min(uzip[uzip != 0]), np.max(uzip)]
-        mm = [-1000000, np.max(uzip)]
+        # mm = [-1000000, np.max(uzip)]
 
         # mm = [min(np.min(np.array(df[c]))), max(np.max(np.array(df[c])))]
         # print(mm)
@@ -102,21 +106,21 @@ class Scatter(BasePlot):
             if val == 0:
                 continue
 
-            color = "#d3d3d3"
+            # color = "#d3d3d3"
 
-            count = np.sum(lines[:, i] == val)
+            # count = np.sum(lines[:, i] == val)
             # alpha = 0.05
             alpha = 1
 
-            if count == mm[0] or count == mm[1]:
-                # print(count, mm)
-                if val == 1:
-                    color = "red"
-                else:
-                    color = "blue"
-                alpha = 1
-                # print("HERE")
-
+            # if count == mm[0] or count == mm[1]:
+            # print(count, mm)
+            # if val == 1:
+            #     color = "red"
+            # else:
+            #     color = "blue"
+            # alpha = 1
+            # print("HERE")
+            color = "red" if val == 1 else "blue"
             self.__draw_line(ax, lines[:, i], val, color, alpha)
 
     def __draw_line(self, ax, xs, val, color, alpha):
@@ -133,7 +137,7 @@ class Scatter(BasePlot):
 
         ax.plot(
             np.arange(1, len(xs) + 1),
-            np.cumsum(xs == val) + np.random.normal(0, 1/16, size=len(xs)),
+            np.cumsum(xs == val),  # + np.random.normal(0, 1/16, size=len(xs)),
             c=color,
             alpha=alpha
         )
