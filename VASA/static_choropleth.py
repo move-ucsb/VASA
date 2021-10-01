@@ -174,9 +174,9 @@ class StackedChoropleth:
                 map_copy = gpd_map.copy()
 
                 map_copy["geometry"] = [
-                    #col.centroid.buffer(100 + 200/4 * count)
+                    # col.centroid.buffer(100 + 200/4 * count)
                     col.centroid.buffer(a + b * count)
-                    #col.centroid.buffer(10000 + 11000/40 * count)
+                    # col.centroid.buffer(10000 + 11000/40 * count)
                     for col, count in zip(map_copy['geometry'], self._collapse_count_combined[col])
                 ]
                 # Row wise:
@@ -210,12 +210,118 @@ class StackedChoropleth:
                         self._titles[map_idx + j], fontsize=self._plot_title_size)
                 utility.hide_axis(ax)
 
-                #self.__show_country_outline(ax, gpd_map)
+                # self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
                 self.__create_choropleth_map(
                     hots[col], ax, map_copy, self.__get_pallete("Reds"), norm, edgecolor='white')
                 self.__create_choropleth_map(
                     colds[col], ax, map_copy, self.__get_pallete("Blues"), norm, edgecolor='white')
+
+        if len(self._titles) == 1:
+            fig.suptitle(self._titles[0], fontsize=self._plot_title_size)
+
+        self.__create_choropleth_legend_horiz(
+            fig, self._recent_title, self._recent_labels)
+        self.__create_choropleth_legend_circles(fig, self._count_labels)
+        utility.save_plot(self._desc)
+
+    def plot_bivar(self):
+        """
+        RECO map showing both number of items the geometry was a significant
+        hot or cold spot (count) and the last time it was a significant
+        value (recency).
+
+        Parameters
+        ----------
+        a: float
+            Circle marker size intercept parameter. Circle marker size is
+            determined by the equation: a + b * (count).
+        b: float
+            Circle marker size scale parameter. Circle marker size is
+            determined by the equation: a + b * (count).
+        """
+        if '_collapse_count_combined' not in locals():
+            self.__collapse_count_combined()
+
+        if '_collapse_recent_hot' not in locals():
+            self.__collapse_recent()
+
+        hots = self._collapse_recent_hot
+        colds = self._collapse_recent_cold
+
+        fig, axes = plt.subplots(
+            self._plot_dim[0],
+            self._plot_dim[1],
+            figsize=self._figsize,
+        )
+        fig.tight_layout()
+        # plt.subplots_adjust(hspace=0.1)
+
+        utility = PlotUtility(fig, self.both_subfolder)
+        utility.reduce_padding()
+
+        # Since I'm restricting maps OR col to be a single item this is really a single loop:
+        for map_idx, gpd_map in enumerate(self._gpd_maps):
+
+            for j, col in enumerate(self._cols):
+
+                # Row wise:
+                ax = utility.get_axis(
+                    axes, (map_idx + j) // self._plot_dim[0], (map_idx + j) % self._plot_dim[1])
+
+                # if True: #self._region and self._region[map_idx] == "usa":
+                #     ax.set_xlim([-0.235e7, 0.22e7])
+                #     ax.set_ylim([-1.75e6, 1.45e6])
+                # elif self._region[map_idx] == "ca":
+                #     ax.set_xlim([-2.60e6, -1.563e6])
+                #     ax.set_ylim([-1e6, 0.65e6])
+                # elif self._region[map_idx] == "fl":
+                #     ax.set_xlim([0.730e6, 1.570e6])
+                #     ax.set_ylim([-1.700e6, -0.950e6])
+                # elif self._region[map_idx] == "ny":
+                #     ax.set_xlim([1.1e6, 2.0e6])
+                #     ax.set_ylim([.03e6, 0.9e6])
+                # elif self._region[map_idx] == "tx":
+                #     ax.set_xlim([-0.990e6, 0.24e6])
+                #     ax.set_ylim([-1.75e6, -0.380e6])
+
+                # if adding new state start with looking at state bounds:
+                # print(gpd_map.total_bounds)
+
+                norm = colors.Normalize(
+                    vmin=1, vmax=max([*hots[col], *colds[col]]))
+
+                if len(self._titles) > 1:
+                    ax.set_title(
+                        self._titles[map_idx + j], fontsize=self._plot_title_size)
+                utility.hide_axis(ax)
+
+                classifications = []
+
+                print(hots[col])
+                print(colds[col])
+                print(self._collapse_count_combined[col])
+                for hot_class, cold_class, count in zip(hots[col], colds[col], self._collapse_count_combined[col]):
+
+                    if count > 25:
+                        if hot_class:
+                            classifications.append(1)
+                        elif cold_class:
+                            classifications.append(2)
+                        else:
+                            classifications.append(0)
+                    else:
+                        if hot_class:
+                            classifications.append(3)
+                        elif cold_class:
+                            classifications.append(4)
+                        else:
+                            classifications.append(0)
+
+                # self.__show_country_outline(ax, gpd_map)
+                self.__show_state_outline(ax, gpd_map)
+                self.__create_choropleth_map(
+                    classifications, ax, gpd_map, self.__get_pallete("Reds"), norm, edgecolor='white')
 
         if len(self._titles) == 1:
             fig.suptitle(self._titles[0], fontsize=self._plot_title_size)
@@ -253,7 +359,7 @@ class StackedChoropleth:
                              fontsize=self._plot_title_size)
                 ax.set_axis_off()
 
-                #self.__show_country_outline(ax, gpd_map)
+                # self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
                 self.__create_choropleth_map(
                     hots[col], ax, gpd_map, self.__get_pallete("Reds"), norm, edgecolor='black')
@@ -448,7 +554,7 @@ class StackedChoropleth:
                 ax_hot.set_axis_off()
                 ax_cold.set_axis_off()
 
-                #self.__show_country_outline(ax, gpd_map)
+                # self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax_hot, gpd_map)
                 self.__show_state_outline(ax_cold, gpd_map)
                 self.__create_choropleth_map(
@@ -491,7 +597,7 @@ class StackedChoropleth:
                              fontsize=self._plot_title_size)
                 ax.set_axis_off()
 
-                #self.__show_country_outline(ax, gpd_map)
+                # self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
                 self.__create_choropleth_map(
                     hots[map_idx + j], ax, gpd_map, self.__get_pallete("Reds"), norm, edgecolor='black')
