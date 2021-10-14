@@ -21,11 +21,15 @@ class Scatter(BasePlot):
 
     # plot args for like colors??
     # showLines: bool or List[int] # fips
-    def plot(self, highlight: str = "", titles: str or List[str] = ""):
+    def plot(self, highlight: str = "", titles: str or List[str] = None, figsize=(0, 0)):
+        n_cols = math.ceil(len(self.v.cols) / 2)
+        n_rows = min(len(self.v.cols), 2)
+
         fig, axes = plt.subplots(
-            math.ceil(len(self.v.cols) / 2),
-            min(len(self.v.cols), 2),
-            figsize=(8, 8),
+            n_cols,
+            n_rows,
+            figsize=((n_rows * 4, n_cols * 4)
+                     if figsize[0] * figsize[1] <= 0 else figsize),
             sharex=True,
             sharey=True
         )
@@ -34,6 +38,9 @@ class Scatter(BasePlot):
 
         count = self.v.reduce("count")
         recent = self.v.reduce('recency')
+
+        titles = [titles] if titles != None and isinstance(
+            titles, str) else titles
 
         df = count.merge(
             recent,
@@ -53,6 +60,7 @@ class Scatter(BasePlot):
 
         for i, ax in enumerate(self.axes):
             col: str = self.v.cols[i]
+            title = titles[i] if titles and len(titles) >= i + 1 else col
 
             points = df[[f"{col}_count", f"{col}_recency"]].copy()
             points["count"] = [
@@ -77,6 +85,8 @@ class Scatter(BasePlot):
 
             self.__create_scatter(ax, points, zorder=10)
             self.__axis_format(ax)
+
+            ax.set_title(title)
 
         self.plotted = True
         # return self.fig
@@ -130,14 +140,16 @@ class Scatter(BasePlot):
         if len(sig_idcs) == 0:
             return
 
-        sig_idcs = sig_idcs[-1] + 1
+        start = max(sig_idcs[0] - 1, 0) if len(sig_idcs) > 0 else 0
+        stop = sig_idcs[-1] + 1
 
         # stop line at list sig value
-        xs = xs[:sig_idcs]
+        xs = xs[start:stop]
 
         ax.plot(
-            np.arange(1, len(xs) + 1),
-            np.cumsum(xs == val),  # + np.random.normal(0, 1/16, size=len(xs)),
+            np.arange(start + 1, stop + 1),
+            # + np.random.normal(0, 1/16, size=len(xs)),
+            np.cumsum(xs == val),
             c=color,
             alpha=alpha
         )
@@ -167,7 +179,7 @@ class Scatter(BasePlot):
         hot_spot = mpatches.Patch(color="red", label="Hotspot")
         cold_spot = mpatches.Patch(color="blue", label="Coldspot")
 
-        plt.legend(handles=[hot_spot, cold_spot])
+        ax.legend(handles=[hot_spot, cold_spot])
 
     def save_plot(self, *args, **kwargs):
         if not self.plotted:

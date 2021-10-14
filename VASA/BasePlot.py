@@ -4,8 +4,10 @@ from typing import List
 
 
 class BasePlot:
-    """The BasePlot class. This is what it does. Test.
     """
+    The BasePlot class. This is what it does. Test.
+    """
+
     def __init__(
         self,
         folder: str,
