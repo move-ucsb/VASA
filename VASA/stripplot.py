@@ -30,7 +30,7 @@ class Strip(BasePlot):
         if not v._ran_lisa:
             raise Exception("VASA object has not ran the lisa method yet")
 
-        super().__init__("strip", "")
+        super().__init__("strip")
 
         cols = v.cols
         self.v: VASA = v

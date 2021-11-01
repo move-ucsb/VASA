@@ -32,7 +32,7 @@ class Scatter(BasePlot):
         if not v._ran_lisa:
             raise Exception("VASA object has not ran the lisa method yet")
 
-        super().__init__("scatter", "scatter_test")
+        super().__init__("scatter")
 
         self.v: VASA = v
         self.plotted = False

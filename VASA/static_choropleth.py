@@ -41,10 +41,10 @@ class StackedChoropleth(BasePlot):
 
         cols = v.cols
 
-        if titles and len(titles) == len(cols):
-            if not isinstance(titles, list):
-                titles = [titles]
-        else:
+        if not isinstance(titles, list):
+            titles = [titles]
+
+        if not titles or len(titles) != len(cols):
             titles = cols
 
         if plot_dim == None:
@@ -67,7 +67,7 @@ class StackedChoropleth(BasePlot):
         self.recent_subfolder = 'stacked/recent/'
         self.both_subfolder = 'stacked/combined/'
 
-        super().__init__("stacked", titles)
+        super().__init__("stacked")
 
         self._count_labels = ["Low Count", "High Count"]
         self._recent_labels = ["1/1/2020", "12/31/2020"]
@@ -415,7 +415,7 @@ class StackedChoropleth(BasePlot):
         self.__create_choropleth_legend_horiz(fig, typ, labels)
 
         if not show:
-            super().save_plot(self._desc, typ)
+            super().save_plot(self._desc, typ.replace(" ", "_").lower())
             plt.close()
 
         return fig, axes

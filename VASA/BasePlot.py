@@ -11,12 +11,10 @@ class BasePlot:
     def __init__(
         self,
         folder: str,
-        titles: str or List[str],
         file_ext: str = "png",
         dpi: int = 150
     ) -> None:
         self.folder = folder
-        self.titles = titles
         self.file_ext = file_ext
         self.dpi = dpi
 
