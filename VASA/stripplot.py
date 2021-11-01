@@ -1,52 +1,67 @@
-# # add state names
-# state_names = pd.read_html('https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code')
-# print(len(state_names))
-
-# state_names = state_names[0]
-
-# state_names.columns = ['name', 'letter_abbr', 'num_code', 'stat']
-
-# state_names.drop('stat', axis=1, inplace=True)
-
-# state_names.num_code = state_names.num_code.apply(lambda x: '0' + str(x) if len(str(x))==1 else str(x))
-
-# state_names.head()
-
-# state_names.loc[state_names.num_code=='25']
-
-
-
 import matplotlib.pyplot as plt
 
-from VASA.vasa import VASA
+from VASA import VASA
 from VASA.BasePlot import BasePlot
 
 import pandas as pd
 import seaborn as sns
 
-state_names = pd.read_csv("../data/state_names.csv")
-state_names.num_code = state_names.num_code.apply(lambda x: '0' + str(x) if len(str(x))==1 else str(x))
-
-
 
 class Strip(BasePlot):
+    """
+    Only works for state level
+    """
 
-    def __init__(self, v: VASA, cols=None):
-        # fig, axes = plt.subplots(
-        #     1,
-        #     1,
-        #     figsize=(8, 8)
-        # )
-        super().__init__("scatter", "striptest")
+    def __init__(self, v: VASA, desc: str = "", titles=None):
+        """
+        Stripplot showing state-level LISA classification trends
 
-        #self.fig = fig
-        #self.axes = [axes]
+        Parameters
+        ----------
+        v: VASA
+            VASA data object with the lisa() method completed
+        desc: str
+            Description used for the image filename, defaults to the
+            name of the columns shown on the plot
+        titles: str | List[str]
+            A string for a single plot or list of strings to title the
+            stripplots. Defaults to the VASA column names.
+        """
+        if not v._ran_lisa:
+            raise Exception("VASA object has not ran the lisa method yet")
+
+        super().__init__("strip", "")
+
+        cols = v.cols
         self.v: VASA = v
+        self._desc = desc if desc else "-".join(cols)
 
-    def plot(self, groupId):
+        if titles:
+            if not isinstance(titles, list):
+                titles = [titles]
+        else:
+            titles = cols
+
+        self.titles = titles
+
+    def plot(self, show: bool = True):
+        """
+        Show the stripplot
+
+        Parameters
+        ----------
+        show: bool = True
+            Whether to show the plot or to write it to a file
+        """
+        state_names = pd.read_csv("../data/state_names.csv")
+        state_names.num_code = state_names.num_code.apply(
+            lambda x: '0' + str(x) if len(str(x)) == 1 else str(x)
+        )
+
         ndf = self.v.reduce("mode")
-        ndf['state_num'] = [groupId(f) for f in ndf.fips]
+        ndf['state_num'] = [self.v.group_summary(f) for f in ndf.fips]
 
+        # combine county data with state names
         ndf = pd.merge(
             ndf,
             state_names,
@@ -55,6 +70,7 @@ class Strip(BasePlot):
             right_on='num_code'
         )
 
+        # number of counties per state
         check1 = self.v.gdf \
             .groupby('STATEFP') \
             .size() \
@@ -62,50 +78,29 @@ class Strip(BasePlot):
             .set_index("STATEFP") \
             .sort_index()
 
-        # check2 = ndf.groupby(['fips','num_code']) \
-        #     .size() \
-        #     .reset_index() \
-        #     .rename(columns={0:'count'}) \
-        #     .groupby('num_code')['fips'] \
-        #     .size() \
-        #     .reset_index() \
-        #     .set_index('num_code') \
-        #     .sort_index()
-
-        #gdf.head()
-
         check1.columns = ['cnt']
 
-        # print(counties_per_state)
-
-        moder = ndf.loc[ndf[self.v.cols].sum(axis=1)>0,]
+        moder = ndf.loc[ndf[self.v.cols].sum(axis=1) > 0, ]
         lst_row = []
 
         for i in self.v.cols:
-            g = moder[['letter_abbr', i]].groupby(['letter_abbr', i]).size().reset_index()
+            g = moder[['letter_abbr', i]].groupby(
+                ['letter_abbr', i]).size().reset_index()
             g['source'] = i
             g.columns = ['letter_abbr', 'val', 'count', 'source']
             lst_row.append(g)
 
-        cc = pd.concat(lst_row) 
-        cc = cc.loc[cc.val!=0,]
+        cc = pd.concat(lst_row)
+        cc = cc.loc[cc.val != 0, ].loc[cc.val <= 2, ]
 
-        print("---- CC.head() ----")
-        print(cc.groupby(["source", "val"]).size())
-
-        print(cc.head())
-        print(cc.shape)
-
-        ppiv = cc.pivot(index=['letter_abbr', 'val'], columns='source', values='count')
+        ppiv = cc.pivot(index=['letter_abbr', 'val'],
+                        columns='source', values='count')
         ppiv = ppiv.reset_index()
-
-        print("--- ppiv.head() ---")
-        print(ppiv.head())
 
         ppiv = ppiv[['letter_abbr', 'val', *self.v.cols]]
 
-
-        msc = pd.merge(check1, state_names, left_on='STATEFP', right_on='num_code')
+        msc = pd.merge(check1, state_names,
+                       left_on='STATEFP', right_on='num_code')
         ppiv = pd.merge(ppiv, msc, how='left', on='letter_abbr')
 
         last_idx = 2 + len(self.v.cols)
@@ -134,9 +129,6 @@ class Strip(BasePlot):
             fontfamily='monospace'
         )
 
-        print("--ppiv 2222222222 ---")
-        print(ppiv.head())
-
         # Make the PairGrid
         g = sns.PairGrid(
             ppiv,
@@ -148,9 +140,8 @@ class Strip(BasePlot):
             palette=['red', 'blue']
         )
 
-        print("HERE")
+        # print("HERE")
 
-        # Draw a dot plot using the stripplot function
         g.map(
             sns.stripplot,
             size=10,
@@ -160,15 +151,12 @@ class Strip(BasePlot):
             linewidth=1
         )  # marker=r"$\circ$")#, alpha=0.5)
 
-        print("DONE MAPPING")
-
         # Use the same x axis limits on all columns and add better labels
         g.set(xlim=(-5, 105), xlabel="", ylabel="")
 
         # Use semantically meaningful titles for the columns
-        titles = ['SafeGraph \nmedian distance traveled', "2", "3", "4"]
 
-        for ax, title in zip(g.axes.flat, titles):
+        for ax, title in zip(g.axes.flat, self.titles):
 
             # Set a different title for each axes
             ax.set(title=title)
@@ -189,10 +177,6 @@ class Strip(BasePlot):
             ha='center'
         )
 
-        # fig.savefig('/strip_plot_v2.jpeg', dpi=150, bbox_inches='tight')
-
-    def save_plot(self, *args, **kwargs):
-        #if not self.plotted:
-        #    return
-
-        super().save_plot(*args, **kwargs)
+        if not show:
+            super().save_plot(self._desc, '')
+            plt.close()
