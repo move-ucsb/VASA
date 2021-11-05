@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from scipy.stats import mode
 import math
 from typing import List
 
@@ -12,20 +11,71 @@ from VASA.BasePlot import BasePlot
 
 class Scatter(BasePlot):
 
-    def __init__(self, v: VASA, cols=None):
-        super().__init__("scatter", "scatter_test")
+    def __init__(self, v: VASA, desc=None, figsize=(0, 0), titles: str or List[str] = None):
+        """
+        Create the scatter plot object.
+
+        Parameters
+        ----------
+        v: VASA
+            VASA object where the lisa() method has been called.
+        desc: str
+            Plot description used when saving to a file
+        figsize: (float, float)
+            Matplotlib figsize specification. Leave as (0, 0) to default
+            to (n_rows * 4, n_cols * 4).
+        titles: str | List[str]
+            String (optional for a single plot) or list of strings to give as titles
+            to the scatter plots. Defaults as the column name
+        """
+        if not v._ran_lisa:
+            raise Exception("VASA object has not ran the lisa method yet")
+
+        super().__init__("scatter")
 
         self.v: VASA = v
         self.plotted = False
         self.fontsize = 14
+        self._desc = desc if desc else "-".join(v.cols)
 
-    # plot args for like colors??
-    # showLines: bool or List[int] # fips
-    def plot(self, highlight: str = "", titles: str or List[str] = ""):
+        cols = v.cols
+        if titles and len(titles) == len(cols):
+            if not isinstance(titles, list):
+                titles = [titles]
+        else:
+            titles = cols
+        self.titles = titles
+
+        n_cols = math.ceil(len(cols) / 2)
+        n_rows = min(len(cols), 2)
+
+        self.n_cols = n_cols
+        self.n_rows = n_rows
+        self.figsize = ((n_rows * 4, n_cols * 4)
+                        if figsize[0] * figsize[1] <= 0 else figsize)
+
+    def plot(self, highlight: str = "", show: bool = True, add_noise: bool = False):
+        """
+        Creates a scatter plot showing hot/cold LISA classifications over
+        the time period.
+
+        Parameters
+        ----------
+        highlight: str
+            Geometry group to draw lines for. This value should match
+            with a v.group_summary() result. Example: geometries are at
+            the county level and the v.group_summary() function returns the
+            state code. Then `highlight` should be a two digit number as a
+            string specifying the state to highlight the counties of.
+        show: bool = True
+            Whether to show the plot or save the file.
+        add_noise: bool = True
+            Add noise to differentiate lines
+        """
         fig, axes = plt.subplots(
-            math.ceil(len(self.v.cols) / 2),
-            min(len(self.v.cols), 2),
-            figsize=(8, 8),
+            self.n_cols,
+            self.n_rows,
+            figsize=self.figsize,
             sharex=True,
             sharey=True
         )
@@ -53,6 +103,8 @@ class Scatter(BasePlot):
 
         for i, ax in enumerate(self.axes):
             col: str = self.v.cols[i]
+            title = self.titles[i] if self.titles and len(
+                self.titles) >= i + 1 else col
 
             points = df[[f"{col}_count", f"{col}_recency"]].copy()
             points["count"] = [
@@ -73,15 +125,20 @@ class Scatter(BasePlot):
 
             if highlight != "":
                 self.__draw_lines(highlight, col, ax,
-                                  df[[f"{col}_count", "fips"]], f"{col}_count")
+                                  df[[f"{col}_count", "fips"]], f"{col}_count", add_noise)
 
             self.__create_scatter(ax, points, zorder=10)
             self.__axis_format(ax)
 
-        self.plotted = True
-        # return self.fig
+            ax.set_title(title)
 
-    def __draw_lines(self, highlight, col, ax, df, c):
+        self.plotted = True
+
+        if not show:
+            super().save_plot(self._desc, '')
+            plt.close()
+
+    def __draw_lines(self, highlight, col, ax, df, c, add_noise):
 
         df = df[[self.v.group_summary(f) == highlight for f in df.fips]]
 
@@ -89,55 +146,42 @@ class Scatter(BasePlot):
             f) == highlight for f in self.v.fips_order]
         lines = np.array(self.v.df[col].tolist())[:, to_select]
 
-        # color = mode(lines).mode[0]
-        color = [(1 if a > b else 2) for a, b in df[c]]
+        lines_rev = lines[::-1, :]
+        lines_order = np.argsort(
+            lines.shape[0] - np.argmax(lines_rev == 1, axis=0) - 1)
 
-        # print(df[c])
-        # uzip_a, uzip_b = list(zip(*df[c]))
-        # uzip = np.array([*uzip_a, *uzip_b])
-
-        # mm = [np.min(uzip[uzip != 0]), np.max(uzip)]
-        # mm = [-1000000, np.max(uzip)]
-
-        # mm = [min(np.min(np.array(df[c]))), max(np.max(np.array(df[c])))]
-        # print(mm)
-
-        for i, val in enumerate(color):
+        colors = [(1 if a > b else 2) for a, b in df[c]]
+        alpha = 10 / len(lines)
+        for i in lines_order[::-1]:
+            val = colors[i]
             if val == 0:
                 continue
-
-            # color = "#d3d3d3"
-
-            # count = np.sum(lines[:, i] == val)
-            # alpha = 0.05
-            alpha = 1
-
-            # if count == mm[0] or count == mm[1]:
-            # print(count, mm)
-            # if val == 1:
-            #     color = "red"
-            # else:
-            #     color = "blue"
-            # alpha = 1
-            # print("HERE")
             color = "red" if val == 1 else "blue"
-            self.__draw_line(ax, lines[:, i], val, color, alpha)
+            self.__draw_line(ax, lines[:, i], val,
+                             color, min(1, alpha), add_noise)
 
-    def __draw_line(self, ax, xs, val, color, alpha):
+    def __draw_line(self, ax, xs, val, color, alpha, add_noise):
         sig_vals = (xs == val) + 0
         sig_idcs = np.where(sig_vals == 1)[0]
 
         if len(sig_idcs) == 0:
             return
 
-        sig_idcs = sig_idcs[-1] + 1
+        start = max(sig_idcs[0] - 1, 0) if len(sig_idcs) > 0 else 0
+        stop = sig_idcs[-1] + 1
 
         # stop line at list sig value
-        xs = xs[:sig_idcs]
+        xs = xs[start:stop]
+
+        ys = np.cumsum(xs == val)
+
+        if add_noise:
+            ys = ys + np.random.normal(0, 0.125, len(ys))
 
         ax.plot(
-            np.arange(1, len(xs) + 1),
-            np.cumsum(xs == val),  # + np.random.normal(0, 1/16, size=len(xs)),
+            np.arange(start + 1, stop + 1),
+            # + np.random.normal(0, 1/16, size=len(xs)),
+            ys,
             c=color,
             alpha=alpha
         )
@@ -158,6 +202,7 @@ class Scatter(BasePlot):
         _, max_x = ax.get_xlim()
         ax.set_xlim(0, max_x)
         ax.set_ylim(0, max_x)
+        ax.grid(False)
 
         ax.set_ylabel("Count", fontsize=self.fontsize)
         ax.set_xlabel("Last Week Number", fontsize=self.fontsize)
@@ -167,22 +212,4 @@ class Scatter(BasePlot):
         hot_spot = mpatches.Patch(color="red", label="Hotspot")
         cold_spot = mpatches.Patch(color="blue", label="Coldspot")
 
-        plt.legend(handles=[hot_spot, cold_spot])
-
-    def save_plot(self, *args, **kwargs):
-        if not self.plotted:
-            return
-
-        super().save_plot(*args, **kwargs)
-
-    # def create_scatter(ax, df):
-    #     #ax.scatter(xs, ys, c="blue", alpha=0.3)
-    #     sns.scatterplot(x="recent", y="count", data=df, hue="which", palette="bwr", ax=ax)
-    #     # slope = 1 line
-    #     # ax.plot(range(0, max(xs) + 1), range(0, max(xs) + 1))
-
-    # def create_scatter(ax, df):
-    #     #ax.scatter(xs, ys, c="blue", alpha=0.3)
-    #     sns.scatterplot(x="recent", y="count", data=df, hue="which", palette="icefire", ax=ax)
-    #     # slope = 1 line
-    #     # ax.plot(range(0, max(xs) + 1), range(0, max(xs) + 1))
+        ax.legend(handles=[hot_spot, cold_spot])
