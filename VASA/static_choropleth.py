@@ -289,7 +289,7 @@ class StackedChoropleth(BasePlot):
                 # self.__show_country_outline(ax, gpd_map)
                 self.__show_state_outline(ax, gpd_map)
                 cmap = ListedColormap(
-                    ["white", "#f330d2", "#deebf7", "#fb6a4a",
+                    ["white", "#fdd0a2", "#deebf7", "#fb6a4a",
                         "#6baed6", "#67000d", "#08306b"]
                 )
                 self.__create_choropleth_map(
@@ -301,7 +301,7 @@ class StackedChoropleth(BasePlot):
 
         self.__create_bivar_legend(
             fig, "Hot Spots", [
-                'white', "#67000d", "#f330d2", "#fb6a4a"], "left"
+                'white', "#67000d", "#fdd0a2", "#fb6a4a"], "left"
         )
         self.__create_bivar_legend(
             fig, "Cold Spots", [

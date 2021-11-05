@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from scipy.stats import mode
 import math
 from typing import List
 
@@ -55,7 +54,7 @@ class Scatter(BasePlot):
         self.figsize = ((n_rows * 4, n_cols * 4)
                         if figsize[0] * figsize[1] <= 0 else figsize)
 
-    def plot(self, highlight: str = "", show: bool = True):
+    def plot(self, highlight: str = "", show: bool = True, add_noise: bool = False):
         """
         Creates a scatter plot showing hot/cold LISA classifications over
         the time period.
@@ -70,6 +69,8 @@ class Scatter(BasePlot):
             string specifying the state to highlight the counties of.
         show: bool = True
             Whether to show the plot or save the file.
+        add_noise: bool = True
+            Add noise to differentiate lines
         """
         fig, axes = plt.subplots(
             self.n_cols,
@@ -124,7 +125,7 @@ class Scatter(BasePlot):
 
             if highlight != "":
                 self.__draw_lines(highlight, col, ax,
-                                  df[[f"{col}_count", "fips"]], f"{col}_count")
+                                  df[[f"{col}_count", "fips"]], f"{col}_count", add_noise)
 
             self.__create_scatter(ax, points, zorder=10)
             self.__axis_format(ax)
@@ -137,7 +138,7 @@ class Scatter(BasePlot):
             super().save_plot(self._desc, '')
             plt.close()
 
-    def __draw_lines(self, highlight, col, ax, df, c):
+    def __draw_lines(self, highlight, col, ax, df, c, add_noise):
 
         df = df[[self.v.group_summary(f) == highlight for f in df.fips]]
 
@@ -145,15 +146,21 @@ class Scatter(BasePlot):
             f) == highlight for f in self.v.fips_order]
         lines = np.array(self.v.df[col].tolist())[:, to_select]
 
-        color = [(1 if a > b else 2) for a, b in df[c]]
+        lines_rev = lines[::-1, :]
+        lines_order = np.argsort(
+            lines.shape[0] - np.argmax(lines_rev == 1, axis=0) - 1)
 
-        for i, val in enumerate(color):
+        colors = [(1 if a > b else 2) for a, b in df[c]]
+        alpha = 10 / len(lines)
+        for i in lines_order[::-1]:
+            val = colors[i]
             if val == 0:
                 continue
             color = "red" if val == 1 else "blue"
-            self.__draw_line(ax, lines[:, i], val, color, 1)
+            self.__draw_line(ax, lines[:, i], val,
+                             color, min(1, alpha), add_noise)
 
-    def __draw_line(self, ax, xs, val, color, alpha):
+    def __draw_line(self, ax, xs, val, color, alpha, add_noise):
         sig_vals = (xs == val) + 0
         sig_idcs = np.where(sig_vals == 1)[0]
 
@@ -166,10 +173,15 @@ class Scatter(BasePlot):
         # stop line at list sig value
         xs = xs[start:stop]
 
+        ys = np.cumsum(xs == val)
+
+        if add_noise:
+            ys = ys + np.random.normal(0, 0.125, len(ys))
+
         ax.plot(
             np.arange(start + 1, stop + 1),
             # + np.random.normal(0, 1/16, size=len(xs)),
-            np.cumsum(xs == val),
+            ys,
             c=color,
             alpha=alpha
         )
