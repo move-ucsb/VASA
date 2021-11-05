@@ -1,5 +1,0 @@
-[0m2021.08.30 14:37:24 INFO  Started: Metals version 0.10.5 in workspace 'C:\MOVE\VASA' for client Visual Studio Code 1.59.1.[0m
-[0m2021.08.30 14:37:28 INFO  time: initialize in 3.9s[0m
-[0m2021.08.30 14:37:33 WARN  Build server is not auto-connectable.[0m
-[0m2021.08.30 14:37:33 WARN  no build tool detected in workspace 'C:\MOVE\VASA'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. [0m
-[0m2021.09.01 12:17:08 INFO  shutting down Metals[0m
