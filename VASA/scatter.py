@@ -3,6 +3,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import math
+from scipy.stats import mode
 from typing import List
 
 from VASA.vasa import VASA
@@ -54,7 +55,7 @@ class Scatter(BasePlot):
         self.figsize = ((n_rows * 4, n_cols * 4)
                         if figsize[0] * figsize[1] <= 0 else figsize)
 
-    def plot(self, highlight: str = "", show: bool = True, add_noise: bool = False):
+    def plot(self, highlight: str = "", show: bool = True, add_noise: bool = False, samples = 0, group=False):
         """
         Creates a scatter plot showing hot/cold LISA classifications over
         the time period.
@@ -91,7 +92,7 @@ class Scatter(BasePlot):
             right_on="fips",
             how="inner",
             suffixes=("_count", "_recency")
-        ).reset_index()
+        ).reset_index(drop=True)
 
         if df.shape[0] == 0:
             return
@@ -99,7 +100,11 @@ class Scatter(BasePlot):
         if highlight != "":
             df = df[[
                 self.v.group_summary(c) == highlight for c in df.fips.values
-            ]].reset_index()
+            ]].reset_index(drop=True)
+
+        if samples > 0:
+            to_incl = np.random.choice(np.arange(0, df.shape[0]), size=samples, replace=False)
+            df = df.iloc[to_incl, :].reset_index(drop=True)
 
         for i, ax in enumerate(self.axes):
             col: str = self.v.cols[i]
@@ -123,9 +128,9 @@ class Scatter(BasePlot):
             points = points[["recent", "count", "which"]].dropna().groupby(
                 ["count", "recent"]).agg(np.mean).reset_index()
 
-            if highlight != "":
+            if highlight != "" or group:
                 self.__draw_lines(highlight, col, ax,
-                                  df[[f"{col}_count", "fips"]], f"{col}_count", add_noise)
+                                  df[[f"{col}_count", "fips"]], f"{col}_count", add_noise, group)
 
             self.__create_scatter(ax, points, zorder=10)
             self.__axis_format(ax)
@@ -138,20 +143,31 @@ class Scatter(BasePlot):
             super().save_plot(self._desc, '')
             plt.close()
 
-    def __draw_lines(self, highlight, col, ax, df, c, add_noise):
+    def __draw_lines(self, highlight, col, ax, df, c, add_noise, group):
+        
+        # df = df[[self.v.group_summary(f) == highlight for f in df.fips]].reset_index(drop=True)
+        to_select = [f in df.fips.values for f in self.v.fips_order]
 
-        df = df[[self.v.group_summary(f) == highlight for f in df.fips]]
-
-        to_select = [self.v.group_summary(
-            f) == highlight for f in self.v.fips_order]
         lines = np.array(self.v.df[col].tolist())[:, to_select]
+
+        if group:
+            group_order = np.array([self.v.group_summary(f) for f in self.v.fips_order])[to_select]
+            groups = np.unique(group_order)
+            
+            output = np.empty((lines.shape[0], len(groups)))
+
+            for i, g in enumerate(groups):
+                group_sel = np.where(group_order == g)[0]
+                output[:, i] = mode(lines[:, group_sel], axis=1).mode[:, 0]
+
+            lines = output
 
         lines_rev = lines[::-1, :]
         lines_order = np.argsort(
             lines.shape[0] - np.argmax(lines_rev == 1, axis=0) - 1)
-
+        
         colors = [(1 if a > b else 2) for a, b in df[c]]
-        alpha = 10 / len(lines)
+        alpha = 1 / len(lines)
         for i in lines_order[::-1]:
             val = colors[i]
             if val == 0:
