@@ -10,3 +10,5 @@ prep2.py
 test2.ipynb
 workspace.code-workspace
 myenv
+paper
+\.pytest_cache

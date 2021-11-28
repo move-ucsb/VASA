@@ -6,4 +6,4 @@ python:
 install:
   - pip install -r requirements.txt
   - pip install .
-script: python3 ./VASA/tests/test1.py
+script: pytest

@@ -103,6 +103,7 @@ class Scatter(BasePlot):
             ]].reset_index(drop=True)
 
         if samples > 0:
+            np.random.seed(self.v.seed)
             to_incl = np.random.choice(np.arange(0, df.shape[0]), size=samples, replace=False)
             df = df.iloc[to_incl, :].reset_index(drop=True)
 
@@ -192,6 +193,7 @@ class Scatter(BasePlot):
         ys = np.cumsum(xs == val)
 
         if add_noise:
+            np.random.seed(self.v.seed)
             ys = ys + np.random.normal(0, 0.125, len(ys))
 
         ax.plot(

@@ -86,7 +86,8 @@ class VASA:
         gdf_group_col: str = "fips",
         date_col: str = "date",
         date_format: str = "%Y-%m-%d",
-        temp_res: Literal["day", "week", "month", "year"] = "week"
+        temp_res: Literal["day", "week", "month", "year"] = "week",
+        seed: int | None = None
     ) -> None:
         """
             Initialize the VASA object with data.
@@ -141,6 +142,7 @@ class VASA:
         # keep track of current state
         self._ran_grouped = False
         self._ran_lisa = False
+        self.seed = seed
 
     @staticmethod
     def __get_year_week(date: dt) -> Tuple[int, int]:
@@ -626,7 +628,8 @@ def __moran_quadrants(col, W, alpha, permutations, filter, which):
         col,
         W,
         geoda_quads=True,
-        permutations=permutations
+        permutations=permutations,
+        seed=self.seed
     )
 
     ps = local_moran.p_sim
