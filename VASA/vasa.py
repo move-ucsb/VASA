@@ -15,10 +15,10 @@ from datetime import datetime as dt
 from splot.libpysal import plot_spatial_weights
 
 from .reduce_vasa_df import *
+from .missing_value_handling import combine_ma
 
 
 def check_ran_lisa(func):
-
     def check(self, *args, **kwargs):
 
         if not self._ran_lisa:
@@ -30,7 +30,6 @@ def check_ran_lisa(func):
 
 
 def check_not_ran_lisa(func):
-
     def check(self, *args, **kwargs):
 
         if self._ran_lisa:
@@ -42,7 +41,6 @@ def check_not_ran_lisa(func):
 
 
 def check_ran_grouped(func):
-
     def check(self, *args, **kwargs):
 
         if not self._ran_grouped:
@@ -54,7 +52,6 @@ def check_ran_grouped(func):
 
 
 def check_not_ran_grouped(func):
-
     def check(self, *args, **kwargs):
 
         if self._ran_grouped:
@@ -87,38 +84,38 @@ class VASA:
         date_col: str = "date",
         date_format: str = "%Y-%m-%d",
         temp_res: Literal["day", "week", "month", "year"] = "week",
-        seed: int | None = None
+        seed: int | None = None,
     ) -> None:
         """
-            Initialize the VASA object with data.
+        Initialize the VASA object with data.
 
-            Parameters
-            ----------
-            df: str or pd.DataFrame,
-                Pandas DataFrame for data in a long format with the date
-            gdf: gpd.GeoDataFrame,
-                Geopandas DataFrame for shape file
-            group_summary: Callable[[str], str]
-                Converts values in the group_col to a value for spatial
-                grouping level.
-                For example, if the group_col has values of GEOID's for
-                census blocks and the group_summary level is at the county
-                level, then the function should be: lambda x: x[:5], as the
-                first 5 letters are the state and county code.
-            df_group_col: str = "fips",
-                Column name in the Pandas DataFrame with the geometry
-                fips code or id
-            gdf_group_col: str = "fips",
-                Column name in the GeoPandas DataFrame with the geometry
-                fips code or id
-            date_col: str = "date",
-                Name of the column containing the date string in the
-                Pandas DataFrame
-            date_format: str = "%Y-%m-%d",
-                Format of the date to convert, set to an empty string if
-                already datetime objects
-            temp_res: Literal["day", "week", "month"] = "week"
-                Temporal aggregation
+        Parameters
+        ----------
+        df: str or pd.DataFrame,
+            Pandas DataFrame for data in a long format with the date
+        gdf: gpd.GeoDataFrame,
+            Geopandas DataFrame for shape file
+        group_summary: Callable[[str], str]
+            Converts values in the group_col to a value for spatial
+            grouping level.
+            For example, if the group_col has values of GEOID's for
+            census blocks and the group_summary level is at the county
+            level, then the function should be: lambda x: x[:5], as the
+            first 5 letters are the state and county code.
+        df_group_col: str = "fips",
+            Column name in the Pandas DataFrame with the geometry
+            fips code or id
+        gdf_group_col: str = "fips",
+            Column name in the GeoPandas DataFrame with the geometry
+            fips code or id
+        date_col: str = "date",
+            Name of the column containing the date string in the
+            Pandas DataFrame
+        date_format: str = "%Y-%m-%d",
+            Format of the date to convert, set to an empty string if
+            already datetime objects
+        temp_res: Literal["day", "week", "month"] = "week"
+            Temporal aggregation
         """
         self.df = df.copy()
         self.df_group_col = df_group_col
@@ -143,6 +140,8 @@ class VASA:
         self._ran_grouped = False
         self._ran_lisa = False
         self.seed = seed
+
+        self.filter_group().group()
 
     @staticmethod
     def __get_year_week(date: dt) -> Tuple[int, int]:
@@ -169,28 +168,31 @@ class VASA:
             Current VASA instance
         """
         # pass in functions other than mean
-        agg_dict = dict(zip(
-            [*self.cols, self.date_col],
-            [*np.repeat(np.nanmean, len(self.cols)), "min"]
-        ))
-
+        agg_dict = dict(
+            zip(
+                [*self.cols, self.date_col],
+                [*np.repeat(np.nanmean, len(self.cols)), "min"],
+            )
+        )
         if self.temp_res == "day":
             # assign year_month_day
-            grouped = self.df
+            grouped = (
+                self.df.assign(day=self.df[self.date_col].values)
+                .groupby(["day", self.df_group_col])
+                .agg(agg_dict)
+                .reset_index()
+                .groupby(["day"])
+            )
         elif self.temp_res == "week":
-            year_week = [
-                self.__get_year_week(date)
-                for date in self.df[self.date_col]
-            ]
+            year_week = [self.__get_year_week(date) for date in self.df[self.date_col]]
 
-            grouped = self.df \
-                .assign(
-                    year_week=year_week
-                ) \
-                .groupby(["year_week", self.df_group_col]) \
-                .agg(agg_dict) \
-                .reset_index() \
+            grouped = (
+                self.df.assign(year_week=year_week)
+                .groupby(["year_week", self.df_group_col])
+                .agg(agg_dict)
+                .reset_index()
                 .groupby(["year_week"])
+            )
 
         elif self.temp_res == "month":
             # assign year_month
@@ -202,15 +204,20 @@ class VASA:
         output = pd.DataFrame()
         for _, group in grouped:
             ordered = pd.merge(
-                self.gdf, group,
-                left_on=self.gdf_group_col, right_on=self.df_group_col,
-                how='left'
+                self.gdf,
+                group,
+                left_on=self.gdf_group_col,
+                right_on=self.df_group_col,
+                how="left",
             )
-
-            output = output.append({
-                "date": ordered.loc[0, self.date_col],
-                **{c: ordered[c] for c in self.cols}
-            }, ignore_index=True)
+            # check ordered actuall has cols --- fails if not
+            output = output.append(
+                {
+                    "date": ordered.loc[0, self.date_col],
+                    **{c: ordered[c] for c in self.cols},
+                },
+                ignore_index=True,
+            )
 
         self.fips_order: List[str] = ordered[self.gdf_group_col]
         self.df = output
@@ -240,13 +247,16 @@ class VASA:
         output = []
 
         for col in self.cols:
-            d = np.array(self.df[col].tolist())
+            d = self.__get_col_numpy(col)
             n_total = len(d[0])
             n_partial_missing = len(d[:, func(d)][0])
             pct_partial_missing = n_partial_missing / n_total * 100
             output.append(pct_partial_missing)
 
         return np.array(output)
+
+    def __get_col_numpy(self, col: str) -> np.array:
+        return np.array(self.df[col].tolist())
 
     def pct_partial_missing(self) -> np.array[float]:
         """
@@ -259,9 +269,10 @@ class VASA:
             Array of % of geometries with some (not all) missing values over
             the time period for each data column in the data frame
         """
-        return self.__pct_missing(
-            lambda d: np.any(np.isnan(d), axis=0)
-        ) - self.pct_full_missing()
+        return (
+            self.__pct_missing(lambda d: np.any(np.isnan(d), axis=0))
+            - self.pct_full_missing()
+        )
 
     def pct_full_missing(self) -> np.array[float]:
         """
@@ -294,7 +305,7 @@ class VASA:
             Current VASA instance
         """
         for col in self.cols:
-            d = np.array(self.df[col].tolist())
+            d = self.__get_col_numpy(col)
 
             to_keep: np.array[bool] = np.mean(np.isnan(d), axis=0) < thresh
 
@@ -302,25 +313,25 @@ class VASA:
             new_fips: List[str] = self.fips_order[to_keep]
             self.fips_order = new_fips
 
-            new_fips_df = pd.DataFrame({"new_fips": new_fips}) \
-                .astype({"new_fips": str})
+            new_fips_df = pd.DataFrame({"new_fips": new_fips}).astype({"new_fips": str})
 
-            self.gdf = self.gdf \
-                .astype({self.gdf_group_col: str}) \
+            self.gdf = (
+                self.gdf.astype({self.gdf_group_col: str})
                 .merge(
                     new_fips_df,
                     left_on=self.gdf_group_col,
                     right_on="new_fips",
-                    how="right"
-                ) \
+                    how="right",
+                )
                 .reset_index(drop=True)
+            )
 
         return self
 
     @check_ran_grouped
     @check_not_ran_lisa
     def impute(self) -> VASA:
-        """"
+        """ "
         Replace missing values with 7-time-period average for each geometry
 
         Returns
@@ -328,22 +339,8 @@ class VASA:
         v: VASA
             Current VASA instance
         """
-        def moving_average(x):
-            return np.convolve(np.nan_to_num(x), np.ones(7), 'same') / 7
-
-        def combine_ma(x):
-            to_remove = np.logical_not(np.isnan(x))
-            ma = moving_average(x)
-            ma[to_remove] = x[to_remove]
-            return ma
-
         for col in self.cols:
-            data = np.array(self.df[col].tolist())
-
-            # this is over all the data, could just do the partial missing
-            # any_missing = d[:, np.any(np.isnan(d), axis=0)]
-            # partial_missing = any_missing[:, np.any(np.logical_not(np.isnan(any_missing)), axis=0)]
-
+            data = self.__get_col_numpy(col)
             self.df[col] = np.apply_along_axis(combine_ma, 0, data).tolist()
 
         return self
@@ -361,7 +358,7 @@ class VASA:
             Current VASA instance
         """
         for col in self.cols:
-            d = np.array(self.df[col].tolist())
+            d = self.__get_col_numpy(col)
 
             row_means = np.nanmean(d, axis=1)
             inds = np.where(np.isnan(d))
@@ -374,7 +371,7 @@ class VASA:
     @check_not_ran_grouped
     @check_not_ran_lisa
     def filter_group(self) -> VASA:
-        """"
+        """ "
         Filter out geometries in the gdf keeping only geometries that are
         in the same group_summary as geometries with values
 
@@ -386,10 +383,12 @@ class VASA:
         unique_groups = np.unique(
             [self.group_summary(g) for g in self.df[self.df_group_col]]
         )
-        self.gdf = self.gdf[[
-            (self.group_summary(g) in unique_groups)
-            for g in self.gdf[self.gdf_group_col]
-        ]]
+        self.gdf = self.gdf[
+            [
+                (self.group_summary(g) in unique_groups)
+                for g in self.gdf[self.gdf_group_col]
+            ]
+        ]
 
         return self
 
@@ -398,7 +397,7 @@ class VASA:
         k: int = 0,
         band: float = 0,
         type: Literal["queens", "union", "none"] = "none",
-        transform: str = 'r'
+        transform: str = "r",
     ) -> lps.weights.W:
         """
         Creates a libpysal weights object based on the GeoDataFrame. This
@@ -426,42 +425,28 @@ class VASA:
         self.gdf = self.gdf.reset_index(drop=True)
 
         if k > 0:
-            w = lps.weights.KNN.from_dataframe(
-                self.gdf,
-                geom_col="geometry",
-                k=k
-            )
+            w = lps.weights.KNN.from_dataframe(self.gdf, geom_col="geometry", k=k)
 
         if band > 0:
             w = lps.weights.DistanceBand.from_dataframe(
-                self.gdf,
-                threshold=band,
-                geom_col="geometry"
+                self.gdf, threshold=band, geom_col="geometry"
             )
         elif type == "queens" or type == "union":
-            w_queens = lps.weights.Queen.from_dataframe(
-                self.gdf,
-                geom_col="geometry"
-            )
+            w_queens = lps.weights.Queen.from_dataframe(self.gdf, geom_col="geometry")
 
             if type == "union" and k > 0:
                 w = lps.weights.w_union(w, w_queens)
             else:
                 w = w_queens
         elif k <= 0:
-            raise Exception(
-                "Insufficient arguments for the create_w function."
-            )
+            raise Exception("Insufficient arguments for the create_w function.")
 
         self.W = w
         self.W.transform = transform
 
         return self.W
 
-    def show_weights_connection(
-        self,
-        **kwargs
-    ):
+    def show_weights_connection(self, **kwargs):
         """
         Shows the weight connection of the passed in geodataframe.
 
@@ -483,7 +468,7 @@ class VASA:
             k=kwargs.pop("k", 0),
             band=kwargs.pop("band", 0),
             type=kwargs.pop("type", "none"),
-            transform=kwargs.pop("transform", "r")
+            transform=kwargs.pop("transform", "r"),
         )
         self.create_w(**w_args)
         return plot_spatial_weights(self.W, self.gdf, **kwargs)
@@ -533,15 +518,16 @@ class VASA:
                 self.df[col] = list(
                     pool.map(
                         partial(
-                            lisa_func,
+                            self.lisa_func,
                             col=col,
                             W=self.W,
                             sig=sig,
                             permutations=permutations,
                             filter=filter,
-                            which=method
+                            which=method,
+                            seed=self.seed,
                         ),
-                        [row for _, row in self.df.iterrows()]
+                        [row for _, row in self.df.iterrows()],
                     )
                 )
 
@@ -554,9 +540,9 @@ class VASA:
         self,
         # this could return anything really...
         reduce: (
-            Literal["count", "recency", "count_hh", "count_ll", "mode"] |
-            Callable[[List[List[int]]], List[int]]
-        )
+            Literal["count", "recency", "count_hh", "count_ll", "mode"]
+            | Callable[[List[List[int]]], List[int]]
+        ),
     ) -> pd.DataFrame:
         """
         Calculates values to describe each geographic unit over the entire time period
@@ -593,26 +579,75 @@ class VASA:
         elif reduce == "mode":
             reduce = reduce_by_mode
 
-        return copy \
-            .agg(reduce) \
-            .assign(fips=self.fips_order)
+        return copy.agg(reduce).assign(fips=self.fips_order)
 
+    @staticmethod
+    def __moran_quadrants(col, W, alpha, permutations, filter, which, seed):
+        print("here in __moran_quadrants")
+        print(len(col))
 
-def __false_discovery_rate(arr, sig):
-    df = pd.DataFrame(arr, columns=["p"]).sort_values("p")
-    df["i"] = np.arange(1, len(arr) + 1) * sig / len(arr)
-    df["sig"] = df["p"] < df["i"]
-    return list(df.sort_index()["sig"])
+        local_moran = Moran_Local(
+            col, W, geoda_quads=True, permutations=permutations, seed=seed
+        )
 
+        ps = local_moran.p_sim
 
-def __bonferroni(arr, sig):
-    return list(np.array(arr) < sig / len(arr))
+        if filter:
+            qs = VASA.__filter_quadrants(local_moran.q)
+        else:
+            qs = local_moran.q
+
+        if which == "fdr":
+            f = VASA.__false_discovery_rate(ps, alpha)
+        elif which == "sim":
+            f = [p < alpha for p in ps]
+        elif which == "bon":
+            f = VASA.__bonferroni(ps, alpha)
+        elif which == "all":
+            fdr = VASA.__false_discovery_rate(ps, alpha)
+            bon = VASA.__bonferroni(ps, alpha)
+            sim = [p < alpha for p in ps]
+
+            qs = combine(qs * np.array(sim), qs * np.array(fdr), qs * np.array(bon))
+            f = sim
+        else:
+            raise 'Valid p-value evaluations: "bon", "fdr", or "sim"'
+
+        return list(qs * np.array(f))
+
+    #
+    # to remove
+    #
+    @staticmethod
+    def lisa_func(ordered, col, W, sig, permutations, filter, which, seed):
+        print("here in lisa_func")
+        return VASA.__moran_quadrants(
+            ordered[col],
+            W,
+            sig,
+            permutations=permutations,
+            filter=filter,
+            which=which,
+            seed=seed,
+        )
+
+    @staticmethod
+    def __filter_quadrants(arr):
+        return [(a if a < 3 else a) for a in arr]
+
+    @staticmethod
+    def __false_discovery_rate(arr, sig):
+        df = pd.DataFrame(arr, columns=["p"]).sort_values("p")
+        df["i"] = np.arange(1, len(arr) + 1) * sig / len(arr)
+        df["sig"] = df["p"] < df["i"]
+        return list(df.sort_index()["sig"])
+
+    @staticmethod
+    def __bonferroni(arr, sig):
+        return list(np.array(arr) < sig / len(arr))
+
 
 # We don't want to filter
-
-
-def __filter_quadrants(arr):
-    return [(a if a < 3 else a) for a in arr]
 
 
 def __combine(sim, fdr, bon):
@@ -620,54 +655,3 @@ def __combine(sim, fdr, bon):
         (b + 4 if b != 0 else (f + 2 if f != 0 else s))
         for b, f, s in zip(bon, fdr, sim)
     ]
-
-
-def __moran_quadrants(col, W, alpha, permutations, filter, which):
-
-    local_moran = Moran_Local(
-        col,
-        W,
-        geoda_quads=True,
-        permutations=permutations,
-        seed=self.seed
-    )
-
-    ps = local_moran.p_sim
-
-    if filter:
-        qs = __filter_quadrants(local_moran.q)
-    else:
-        qs = local_moran.q
-
-    if which == "fdr":
-        f = __false_discovery_rate(ps, alpha)
-    elif which == "sim":
-        f = [p < alpha for p in ps]
-    elif which == "bon":
-        f = __bonferroni(ps, alpha)
-    elif which == "all":
-        fdr = __false_discovery_rate(ps, alpha)
-        bon = __bonferroni(ps, alpha)
-        sim = [p < alpha for p in ps]
-
-        qs = combine(
-            qs * np.array(sim),
-            qs * np.array(fdr),
-            qs * np.array(bon)
-        )
-        f = sim
-    else:
-        raise 'Valid p-value evaluations: "bon", "fdr", or "sim"'
-
-    return list(qs * np.array(f))
-
-
-def lisa_func(ordered, col, W, sig, permutations, filter, which):
-    return __moran_quadrants(
-        ordered[col],
-        W,
-        sig,
-        permutations=permutations,
-        filter=filter,
-        which=which
-    )

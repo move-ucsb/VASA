@@ -10,9 +10,18 @@ from VASA.vasa import VASA
 from VASA.BasePlot import BasePlot
 
 
-class Scatter(BasePlot):
+# You will need to modify the following methods:
+# > plot
+# > __draw_lines
+# > __draw_line
+# > __create_scatter
+# > __axis_format
 
-    def __init__(self, v: VASA, desc=None, figsize=(0, 0), titles: str or List[str] = None):
+
+class Scatter(BasePlot):
+    def __init__(
+        self, v: VASA, desc=None, figsize=(0, 0), titles: str or List[str] = None
+    ):
         """
         Create the scatter plot object.
 
@@ -40,7 +49,7 @@ class Scatter(BasePlot):
         self._desc = desc if desc else "-".join(v.cols)
 
         cols = v.cols
-        if titles and len(titles) == len(cols):
+        if titles:
             if not isinstance(titles, list):
                 titles = [titles]
         else:
@@ -52,10 +61,18 @@ class Scatter(BasePlot):
 
         self.n_cols = n_cols
         self.n_rows = n_rows
-        self.figsize = ((n_rows * 4, n_cols * 4)
-                        if figsize[0] * figsize[1] <= 0 else figsize)
+        self.figsize = (
+            (n_rows * 4, n_cols * 4) if figsize[0] * figsize[1] <= 0 else figsize
+        )
 
-    def plot(self, highlight: str = "", show: bool = True, add_noise: bool = False, samples = 0, group=False):
+    def plot(
+        self,
+        highlight: str = "",
+        show: bool = True,
+        add_noise: bool = False,
+        samples=0,
+        group=False,
+    ):
         """
         Creates a scatter plot showing hot/cold LISA classifications over
         the time period.
@@ -73,88 +90,82 @@ class Scatter(BasePlot):
         add_noise: bool = True
             Add noise to differentiate lines
         """
+        #
+        # This is the function that is being called -- the main entry point
+        # make adjustments as needed.
+        #
+
+        # make axis for each value column in the dataframe:
+        # if there are multiple columns then we make a scatter plot for each
         fig, axes = plt.subplots(
-            self.n_cols,
-            self.n_rows,
-            figsize=self.figsize,
-            sharex=True,
-            sharey=True
+            self.n_cols, self.n_rows, figsize=self.figsize, sharex=True, sharey=True
         )
         self.fig = fig
         self.axes = [axes] if len(self.v.cols) == 1 else axes.flatten()
 
-        count = self.v.reduce("count")
-        recent = self.v.reduce('recency')
+        # this is an aggregated version of the dataframe
+        df = self.__df_calc(highlight, samples)
 
-        df = count.merge(
-            recent,
-            left_on="fips",
-            right_on="fips",
-            how="inner",
-            suffixes=("_count", "_recency")
-        ).reset_index(drop=True)
-
-        if df.shape[0] == 0:
-            return
-
-        if highlight != "":
-            df = df[[
-                self.v.group_summary(c) == highlight for c in df.fips.values
-            ]].reset_index(drop=True)
-
-        if samples > 0:
-            np.random.seed(self.v.seed)
-            to_incl = np.random.choice(np.arange(0, df.shape[0]), size=samples, replace=False)
-            df = df.iloc[to_incl, :].reset_index(drop=True)
-
+        # for each value column, create a scatter plot:
         for i, ax in enumerate(self.axes):
-            col: str = self.v.cols[i]
-            title = self.titles[i] if self.titles and len(
-                self.titles) >= i + 1 else col
+            col: str = self.v.cols[i]  # column name
 
-            points = df[[f"{col}_count", f"{col}_recency"]].copy()
-            points["count"] = [
-                max(c)
-                for c in points[f"{col}_count"]
-            ]
-            points["which"] = [
-                (1 if h > c else (np.nan if h == 0 and c == 0 else 0))
-                for h, c in points[f"{col}_count"]
-            ]
-            points = points.rename(
-                {f"{col}_recency": "recent"},
-                axis="columns"
-            )
+            # plot title:
+            title = self.titles[i] if self.titles and len(self.titles) >= i + 1 else col
 
-            points = points[["recent", "count", "which"]].dropna().groupby(
-                ["count", "recent"]).agg(np.mean).reset_index()
+            # This is the data frame used for making the points
+            #
+            # Columns:
+            # > count   : y-axis value
+            # > recency : x-axis value
+            # > which   : proportion [0, 1] where 0 should be a dark blue representing
+            #             all cold spots, 1 should be dark red representing hot spots
+            #             0.5 should be white/gray/something neutral representing even
+            #             amounts of hot spots and cold spots
+            points = self.__df_points(df, col)
 
-            if highlight != "" or group:
-                self.__draw_lines(highlight, col, ax,
-                                  df[[f"{col}_count", "fips"]], f"{col}_count", add_noise, group)
+            if highlight != "" or group:  # draw scatter plot lines:
+                self.__draw_lines(
+                    col,
+                    ax,
+                    df[[f"{col}_count", "fips"]],
+                    f"{col}_count",
+                    add_noise,
+                    group,
+                )
 
+            # create the plot:
             self.__create_scatter(ax, points, zorder=10)
-            self.__axis_format(ax)
 
+            # axis labels etc...
+            self.__axis_format(ax)
             ax.set_title(title)
 
         self.plotted = True
 
-        if not show:
-            super().save_plot(self._desc, '')
+        if not show:  # write to file
+            super().save_plot(self._desc, "")
             plt.close()
 
-    def __draw_lines(self, highlight, col, ax, df, c, add_noise, group):
-        
-        # df = df[[self.v.group_summary(f) == highlight for f in df.fips]].reset_index(drop=True)
+    def __draw_lines(self, col, ax, df, c, add_noise, group):
+        # this function figures out which lines to draw and calls the
+        # __draw_line function for each one
+        # depending on your implementation, you may need to change this function
+        # adding additional parameters to this function will be easy,
+        # if it doesn't make sense to draw the lines individually, you can
+        # remove that function and the for loop
+
+        # If you can, I would try to avoid changing these calculations:
         to_select = [f in df.fips.values for f in self.v.fips_order]
 
         lines = np.array(self.v.df[col].tolist())[:, to_select]
 
         if group:
-            group_order = np.array([self.v.group_summary(f) for f in self.v.fips_order])[to_select]
+            group_order = np.array(
+                [self.v.group_summary(f) for f in self.v.fips_order]
+            )[to_select]
             groups = np.unique(group_order)
-            
+
             output = np.empty((lines.shape[0], len(groups)))
 
             for i, g in enumerate(groups):
@@ -164,9 +175,13 @@ class Scatter(BasePlot):
             lines = output
 
         lines_rev = lines[::-1, :]
-        lines_order = np.argsort(
-            lines.shape[0] - np.argmax(lines_rev == 1, axis=0) - 1)
-        
+
+        # we need to order the lines so ones ending earlier are on top
+        # each column represents a line
+        lines_order = np.argsort(lines.shape[0] - np.argmax(lines_rev == 1, axis=0) - 1)
+
+        # you may have to change the following, depending on the library you use::
+
         colors = [(1 if a > b else 2) for a, b in df[c]]
         alpha = 1 / len(lines)
         for i in lines_order[::-1]:
@@ -174,37 +189,32 @@ class Scatter(BasePlot):
             if val == 0:
                 continue
             color = "red" if val == 1 else "blue"
-            self.__draw_line(ax, lines[:, i], val,
-                             color, min(1, alpha), add_noise)
+            self.__draw_line(ax, lines[:, i], val, color, min(1, alpha), add_noise)
 
     def __draw_line(self, ax, xs, val, color, alpha, add_noise):
-        sig_vals = (xs == val) + 0
-        sig_idcs = np.where(sig_vals == 1)[0]
+        #
+        # NEED TO CHANGE, depending on the library you choose, you may
+        # add parameters to this function, add additional functions, or
+        # remove entirely
+        #
 
-        if len(sig_idcs) == 0:
-            return
+        # this function gives you the list of x values and y values,
+        # probably don't need to change
+        xs, ys = self.__calc_line(xs, val, add_noise)
 
-        start = max(sig_idcs[0] - 1, 0) if len(sig_idcs) > 0 else 0
-        stop = sig_idcs[-1] + 1
-
-        # stop line at list sig value
-        xs = xs[start:stop]
-
-        ys = np.cumsum(xs == val)
-
-        if add_noise:
-            np.random.seed(self.v.seed)
-            ys = ys + np.random.normal(0, 0.125, len(ys))
-
-        ax.plot(
-            np.arange(start + 1, stop + 1),
-            # + np.random.normal(0, 1/16, size=len(xs)),
-            ys,
-            c=color,
-            alpha=alpha
-        )
+        # change this function:
+        ax.plot(xs, ys, c=color, alpha=alpha)
 
     def __create_scatter(self, ax, df: pd.DataFrame, **kwargs):
+        #
+        # NEED TO CHANGE, depending on the library you choose, you may
+        # add parameters to this function, add additional functions, or
+        # remove entirely
+        #
+
+        # This function creates all of the circles for the scatter plot
+        # Will need to change for the library you decide to use
+
         sns.scatterplot(
             x="recent",
             y="count",
@@ -213,10 +223,19 @@ class Scatter(BasePlot):
             palette="bwr",
             ax=ax,
             s=30,
-            **kwargs
+            **kwargs,
         )
 
     def __axis_format(self, ax):
+        #
+        # NEED TO CHANGE, depending on the library you choose, you may
+        # add parameters to this function, add additional functions, or
+        # remove entirely
+        #
+
+        # This function just addes labels and makes adjustments to each
+        # scatter plot
+
         _, max_x = ax.get_xlim()
         ax.set_xlim(0, max_x)
         ax.set_ylim(0, max_x)
@@ -231,3 +250,81 @@ class Scatter(BasePlot):
         cold_spot = mpatches.Patch(color="blue", label="Coldspot")
 
         ax.legend(handles=[hot_spot, cold_spot])
+
+    #
+    # Beyond this point are just calculations that you
+    # most likely won't need to adjust:
+    #
+
+    def __df_calc(self, highlight, samples):
+        # used to calculate position of points across all columns
+        # most likely will *not* need to change
+
+        count = self.v.reduce("count")
+        recent = self.v.reduce("recency")
+
+        df = count.merge(
+            recent,
+            left_on="fips",
+            right_on="fips",
+            how="inner",
+            suffixes=("_count", "_recency"),
+        ).reset_index(drop=True)
+
+        if df.shape[0] == 0:
+            return
+
+        if highlight != "":
+            df = df[
+                [self.v.group_summary(c) == highlight for c in df.fips.values]
+            ].reset_index(drop=True)
+
+        if samples > 0:
+            np.random.seed(self.v.seed)
+            to_incl = np.random.choice(
+                np.arange(0, df.shape[0]), size=samples, replace=False
+            )
+            df = df.iloc[to_incl, :].reset_index(drop=True)
+
+        return df
+
+    def __df_points(self, df, col):
+        points = df[[f"{col}_count", f"{col}_recency"]].copy()
+        points["count"] = [max(c) for c in points[f"{col}_count"]]
+        points["which"] = [
+            (1 if h > c else (np.nan if h == 0 and c == 0 else 0))
+            for h, c in points[f"{col}_count"]
+        ]
+        points = points.rename({f"{col}_recency": "recent"}, axis="columns")
+
+        points = (
+            points[["recent", "count", "which"]]
+            .dropna()
+            .groupby(["count", "recent"])
+            .agg(np.mean)
+            .reset_index()
+        )
+        return points
+
+    def __calc_line(self, xs, val, add_noise):
+        # given a sequence of [0, 1, 0, 0, 2, 1, 0, ...]
+        # and the target categorization: 1 or 2
+        # produce the cumulative sum of the count of occurences
+        # and the date values changes are on
+
+        sig_vals = (xs == val) + 0
+        sig_idcs = np.where(sig_vals == 1)[0]
+
+        if len(sig_idcs) == 0:
+            return
+
+        start = max(sig_idcs[0] - 1, 0) if len(sig_idcs) > 0 else 0
+        stop = sig_idcs[-1] + 1
+
+        ys = np.cumsum(sig_vals)[start:stop]
+
+        if add_noise:
+            np.random.seed(self.v.seed)
+            ys = ys + np.random.normal(0, 0.125, len(ys))
+
+        return np.arange(start, stop) + 1, ys

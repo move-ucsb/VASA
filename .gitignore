@@ -12,3 +12,5 @@ workspace.code-workspace
 myenv
 paper
 \.pytest_cache
+VASA.egg-info
+dist
