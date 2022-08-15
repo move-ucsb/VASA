@@ -37,3 +37,13 @@ Scatter plots provide an alternative view to the choropleths, allowing the optio
 In this example of a Stripplot, the percentages of counties that were classified as hotspots or coldspots is shown for each state.
 
 ![](notebooks/stripplot.png)
+
+**Update: adding interactive line scatter and choropleth plots**
+
+![](notebooks/line_path_selection.gif)
+
+![](notebooks/line_path_mouseover.gif)
+
+![](notebooks/choropleth-us.png)
+
+![](notebooks/choropleth-state.png)
