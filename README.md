@@ -47,3 +47,8 @@ In this example of a Stripplot, the percentages of counties that were classified
 ![](notebooks/choropleth-us.png)
 
 ![](notebooks/choropleth-state.png)
+
+## Funding Acknowledgement
+Award BCS # 2043202
+CAREER: Modeling Movement and Behavior Responses to Environmental Disruptions
+Link: https://www.nsf.gov/awardsearch/showAward?AWD_ID=2043202&HistoricalAwards=false
