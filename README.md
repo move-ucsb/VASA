@@ -53,4 +53,6 @@ In this example of a Stripplot, the percentages of counties that were classified
 National Science Foundation 
 BCS Awards 2043202 and 1853681.
 
-<img src="[drawing.jpg](https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/NSF_logo.png/1200px-NSF_logo.png)" alt="drawing" width="200"/>
+
+
+![]("https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/NSF_logo.png/1200px-NSF_logo.png" =250x)
