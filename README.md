@@ -54,5 +54,4 @@ National Science Foundation
 BCS Awards 2043202 and 1853681.
 
 
-
-![](https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/NSF_logo.png/1200px-NSF_logo.png | width=250)
+<img src="[https://github.com/favicon.ico](https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/NSF_logo.png/1200px-NSF_logo.png)" width="250">
