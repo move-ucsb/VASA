@@ -50,8 +50,7 @@ In this example of a Stripplot, the percentages of counties that were classified
 
 ## Funding Acknowledgement
 
-Award BCS # 2043202
+National Science Foundation 
+BCS Awards 2043202 and 1853681.
 
-CAREER: Modeling Movement and Behavior Responses to Environmental Disruptions
-
-Link: https://www.nsf.gov/awardsearch/showAward?AWD_ID=2043202&HistoricalAwards=false
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/NSF_logo.png/1200px-NSF_logo.png)
